@@ -67,8 +67,12 @@ void peer_sync(HostManager& hm) {
     while(true) {
         for(auto host : hm.hosts) {
             try {
+                Logger::logStatus("ADDING SELF (" + hm.computeAddress() + ") AS A PEER TO " + host);
                 pingPeer(host, hm.computeAddress(), std::time(0), hm.version, hm.networkName);
-            } catch (...) { }
+            } catch (const std::exception &exc) {
+                Logger::logStatus("ERROR PINGING PEER:");
+                Logger::logStatus(exc.what());
+            }
         }
         std::this_thread::sleep_for(std::chrono::minutes(5));
     }
@@ -339,6 +343,7 @@ void HostManager::addPeer(string addr, uint64_t time, string version, string net
             json name = getName(addr);
         } catch(...) {
             // if not exit
+            Logger::logStatus("TRIED ADDING PEER "+ addr +",  NOT REACHABLE.");
             return;
         }
     }
@@ -433,6 +438,7 @@ void HostManager::refreshHostList() {
             std::thread([hostUrl, &hm, &lock](){
                 try {
                     json hostInfo = getName(hostUrl);
+                    //TODO: report bug
                     if (hostInfo["version"] < hm.minHostVersion) {
                         Logger::logStatus(RED + "[ UNREACHABLE ] " + RESET  + hostUrl);
                         return;

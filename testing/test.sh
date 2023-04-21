@@ -13,6 +13,6 @@ do
 	mkdir server$s
 	cd server$s
 	cp ../../genesis.json .
-	../../bin/keygen && ../../bin/server --local -p 300$s --host-source http://localhost:3000 &
+	../../bin/keygen && ../../bin/server --local -p 300$s >> out.txt &
 	cd ..
 done

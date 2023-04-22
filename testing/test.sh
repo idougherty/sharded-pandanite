@@ -4,7 +4,7 @@
 #     - n: number of servers to start
 # Start root node guy
 cd ..
-./bin/server --local -ip http://localhost -p 3000 &
+./bin/server --local -ip http://localhost -p 3000 >> ./testing/3kout.txt &
 cd testing
 
 # create n servers
@@ -13,6 +13,6 @@ do
 	mkdir server$s
 	cd server$s
 	cp ../../genesis.json .
-	../../bin/keygen && ../../bin/server --local -ip http://localhost -p 300$s >> out.txt &
+	../../bin/keygen && ../../bin/server --local -ip http://localhost -p $((3000 + $s)) >> out.txt &
 	cd ..
 done

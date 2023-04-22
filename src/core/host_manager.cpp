@@ -155,7 +155,7 @@ HostManager::HostManager(json config) {
     for(auto h : config["hostSources"]) {
         this->hostSources.push_back(h);
     }
-    if (this->hostSources.size() == 0) {
+    if (this->hostSources.size() == 0 && this->address != "http://localhost:3000") {
         string localhost = "http://localhost:3000";
         this->hosts.push_back(localhost);
         this->hostPingTimes[localhost] = std::time(0);
@@ -371,6 +371,7 @@ void HostManager::addPeer(string addr, uint64_t time, string version, string net
         reqs.push_back(std::async([neighbor, addr, _version, networkName](){
             if (neighbor == addr) return;
             try {
+                Logger::logStatus("Sending /ping_peer request to " + neighbor + " to add peer ("+addr+")");
                 pingPeer(neighbor, addr, std::time(0), _version, networkName);
             } catch(const std::exception &e) {
                 Logger::logStatus("Could not add peer " + addr + " to " + neighbor);

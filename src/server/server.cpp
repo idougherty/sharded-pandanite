@@ -441,15 +441,16 @@ void PandaniteServer::run(json config) {
                             res->end(response.dump());
                             Logger::logError("/submit","Too many transactions");
                         } else {
-                            for(int j = 0; j < blockH.numTransactions; j++) {
-                                TransactionInfo t = transactionInfoFromBuffer(ptr);
-                                ptr += TRANSACTIONINFO_BUFFER_SIZE;
-                                Transaction tx(t);
-                                transactions.push_back(tx);
-                            }
-                            Block block(blockH, transactions);
-                            json response = manager.submitProofOfWork(block);
-                            res->end(response.dump());
+                            // INTERESTING! WE WILL IGNORE THIS, USE THIS FOR COMMITTEE IDENTITY LATER
+                            // for(int j = 0; j < blockH.numTransactions; j++) {
+                            //     TransactionInfo t = transactionInfoFromBuffer(ptr);
+                            //     ptr += TRANSACTIONINFO_BUFFER_SIZE;
+                            //     Transaction tx(t);
+                            //     transactions.push_back(tx);
+                            // }
+                            // Block block(blockH, transactions);
+                            // json response = manager.submitProofOfWork(block);
+                            // res->end(response.dump());
                         }
                     }
                 } catch(const std::exception &e) {

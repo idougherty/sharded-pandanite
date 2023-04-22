@@ -135,6 +135,12 @@ ExecutionStatus MemPool::addTransaction(Transaction t) {
     }
 
     transactionQueue.insert(t);
+
+    if (transactionQueue.size() >= (MAX_TRANSACTIONS_PER_BLOCK - 1)) {
+        // TODO: START PBFT
+        Logger::logStatus("TRANSACTION QUEUE FULL!!!!!");
+    }
+
     mempoolOutgoing[t.fromWallet()] += totalTxAmount;
     std::unique_lock<std::mutex> toSend_lock(toSend_mutex);
     toSend.push_back(t);

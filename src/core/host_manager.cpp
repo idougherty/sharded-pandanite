@@ -69,9 +69,9 @@ void peer_sync(HostManager& hm) {
             try {
                 Logger::logStatus("ADDING SELF (" + hm.computeAddress() + ") AS A PEER TO " + host);
                 pingPeer(host, hm.computeAddress(), std::time(0), hm.version, hm.networkName);
-            } catch (const std::exception &exc) {
-                Logger::logStatus("ERROR PINGING PEER:");
-                Logger::logStatus(exc.what());
+            } catch (const std::exception &e) {
+                Logger::logStatus("ERROR SYNCING PEERS:");
+                Logger::logStatus(e.what());
             }
         }
         std::this_thread::sleep_for(std::chrono::minutes(5));
@@ -372,8 +372,9 @@ void HostManager::addPeer(string addr, uint64_t time, string version, string net
             if (neighbor == addr) return;
             try {
                 pingPeer(neighbor, addr, std::time(0), _version, networkName);
-            } catch(...) {
+            } catch(const std::exception &e) {
                 Logger::logStatus("Could not add peer " + addr + " to " + neighbor);
+                Logger::logStatus(e.what());
             }
         }));
     }

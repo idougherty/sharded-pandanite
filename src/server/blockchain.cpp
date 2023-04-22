@@ -374,6 +374,9 @@ ExecutionStatus BlockChain::addBlockSync(Block& block) {
 
 ExecutionStatus BlockChain::addBlock(Block& block) {
     // check difficulty + nonce
+    // Logger::logStatus(SHA256toString(block.getHash()));
+    // Logger::logStatus(to_string(block.getTransactions().size()) +"/"+ to_string(MAX_TRANSACTIONS_PER_BLOCK));
+
     if (block.getTransactions().size() > MAX_TRANSACTIONS_PER_BLOCK) return INVALID_TRANSACTION_COUNT;
     if (block.getId() != this->numBlocks + 1) return INVALID_BLOCK_ID;
     if (block.getDifficulty() != this->difficulty) return INVALID_DIFFICULTY;
@@ -406,6 +409,7 @@ ExecutionStatus BlockChain::addBlock(Block& block) {
     MerkleTree m;
     m.setItems(block.getTransactions());
     SHA256Hash computedRoot = m.getRootHash();
+    // Logger::logStatus(SHA256toString(computedRoot));
     if (block.getMerkleRoot() != computedRoot) return INVALID_MERKLE_ROOT;
     LedgerState deltasFromBlock;
     ExecutionStatus status = Executor::ExecuteBlock(block, this->ledger, this->txdb, deltasFromBlock, this->getCurrentMiningFee(block.getId()));

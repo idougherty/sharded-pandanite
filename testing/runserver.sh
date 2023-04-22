@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# usage ./server.sh [n]
+# usage ./runserver.sh [n]
 #	- n: number of servers to start
-cd..
+cd ..
 ./bin/server --local -ip http://localhost -p 3000 >> ./testing/3kout.txt &
 cd testing
 

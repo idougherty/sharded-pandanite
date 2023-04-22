@@ -74,7 +74,7 @@ void peer_sync(HostManager& hm) {
                 Logger::logStatus(e.what());
             }
         }
-        std::this_thread::sleep_for(std::chrono::minutes(5));
+        std::this_thread::sleep_for(std::chrono::minutes(1));
     }
 }
 
@@ -352,6 +352,10 @@ void HostManager::addPeer(string addr, uint64_t time, string version, string net
     if (this->whitelist.size() == 0 || this->whitelist.find(addr) != this->whitelist.end()){
         Logger::logStatus("Added new peer: " + addr);
         hosts.push_back(addr);
+
+        this->hostPingTimes[addr] = std::time(0);
+        // record how much our system clock differs from theirs:
+        this->peerClockDeltas[addr] = std::time(0) - time;
     } else {
         return;
     }
@@ -467,9 +471,9 @@ void HostManager::syncHeadersWithPeers() {
     this->currPeers.empty();
     
     // pick N random peers
-    set<string> hosts = this->sampleFreshHosts(RANDOM_GOOD_HOST_COUNT);
+    set<string> freshHosts = this->sampleFreshHosts(RANDOM_GOOD_HOST_COUNT);
 
-    for (auto h : hosts) {
+    for (auto h : freshHosts) {
         this->currPeers.push_back(std::make_shared<HeaderChain>(h, this->checkpoints, this->bannedHashes, this->blockStore));
     }
 }

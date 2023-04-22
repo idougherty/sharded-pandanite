@@ -761,9 +761,9 @@ void PandaniteServer::run(json config) {
                     }
                     res->end(response.dump());
                 }  catch(const std::exception &e) {
-                    Logger::logError("/add_transaction", e.what());
+                    Logger::logError("/add_transaction_json", e.what());
                 } catch(...) {
-                    Logger::logError("/add_transaction", "unknown");
+                    Logger::logError("/add_transaction_json", "unknown");
                 }
             }
         });

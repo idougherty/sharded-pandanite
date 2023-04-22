@@ -13,7 +13,7 @@ using namespace std;
 RequestManager::RequestManager(HostManager& hosts, string ledgerPath, string blockPath, string txdbPath) : hosts(hosts) {
     this->blockchain = std::make_shared<BlockChain>(hosts, ledgerPath, blockPath, txdbPath);
     this->mempool = std::make_shared<MemPool>(hosts, *this->blockchain);
-    this->pbftManager = std::make_shared<PBFTManager>(hosts, *this->blockchain);
+    this->pbftManager = std::make_shared<PBFTManager>(hosts, *this->blockchain, *this->mempool);
     this->rateLimiter = std::make_shared<RateLimiter>(30,5); // max of 30 requests over 5 sec period 
     this->limitRequests = true;
     if (!hosts.isDisabled()) {
@@ -28,7 +28,6 @@ RequestManager::RequestManager(HostManager& hosts, string ledgerPath, string blo
                 readRawTransactions(host, transactions);
                 for(auto& t : transactions) {
                     this->addTransaction(t);
-                    Logger::logStatus("?????????????????????????????????????????????///");
                 }
             } catch(...) {}
         }
@@ -83,8 +82,12 @@ json RequestManager::submitTransaction(Transaction& t) {
 ExecutionStatus RequestManager::addTransaction(Transaction& t) {
     ExecutionStatus status = this->mempool->addTransaction(t);
 
-    if(this->mempool->size() >= MAX_TRANSACTIONS_PER_BLOCK)
-        this->pbftManager->proposeBlock();
+    if(this->mempool->size() >= MAX_TRANSACTIONS_PER_BLOCK) {
+        RequestManager & rm = *this;
+        std::thread([&rm](){
+            rm.pbftManager->proposeBlock();
+        }).detach();
+    }
 
     return status;
 }

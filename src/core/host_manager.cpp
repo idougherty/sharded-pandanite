@@ -322,6 +322,7 @@ set<string> HostManager::sampleFreshHosts(int count) {
     Adds a peer to the host list, 
 */
 void HostManager::addPeer(string addr, uint64_t time, string version, string network) {
+    cout << "DEBUG: attempting to add peer" << addr << endl;
     if (network != this->networkName) return;
     if (version < this->minHostVersion) return;
 
@@ -369,13 +370,18 @@ void HostManager::addPeer(string addr, uint64_t time, string version, string net
     string networkName = this->networkName;
     for(auto neighbor : neighbors) {
         reqs.push_back(std::async([neighbor, addr, _version, networkName](){
+	    int b = 1;
             if (neighbor == addr) return;
+	    cout << "DEBUG: args for reqs, Neighbor: " << neighbor << " Addr: " << addr << " Time: " << std::time(0) << " Version: " << _version << " Networkname: " << networkName << endl;
             try {
+		//       host_url  peer_url  
                 pingPeer(neighbor, addr, std::time(0), _version, networkName);
             } catch(const std::exception &e) {
                 Logger::logStatus("Could not add peer " + addr + " to " + neighbor);
                 Logger::logStatus(e.what());
+		b = 0;
             }
+	    if(b) cout << "DEBUG: pingpeer executed without error" << endl;
         }));
     }
 

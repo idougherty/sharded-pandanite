@@ -1,18 +1,11 @@
 #!/bin/bash
 
-# usage ./test.sh [n]
-#     - n: number of servers to start
-# Start root node guy
-cd ..
-./bin/server --local -ip http://localhost -p 3000 >> ./testing/3kout.txt &
-cd testing
+# usage ./test.sh [n] [d]
+# 	- n: number of peers
+#	- d: delay in seconds(for sleep)
+# invokes ./server [n], sleep [d], ./peers [n]
+./server.sh $1
+sleep $2
+./peers.sh $1
 
-# create n servers
-for s in $(seq 1 $1)
-do
-	mkdir server$s
-	cd server$s
-	cp ../../genesis.json .
-	../../bin/keygen && ../../bin/server --local -ip http://localhost -p $((3000 + $s)) >> out.txt &
-	cd ..
-done
+

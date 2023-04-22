@@ -14,7 +14,7 @@ RequestManager::RequestManager(HostManager& hosts, string ledgerPath, string blo
     this->blockchain = std::make_shared<BlockChain>(hosts, ledgerPath, blockPath, txdbPath);
     this->mempool = std::make_shared<MemPool>(hosts, *this->blockchain);
     this->rateLimiter = std::make_shared<RateLimiter>(30,5); // max of 30 requests over 5 sec period 
-    this->limitRequests = true;
+    this->limitRequests = false; // TODO flip this back to true at some point
     if (!hosts.isDisabled()) {
         this->blockchain->sync();
      

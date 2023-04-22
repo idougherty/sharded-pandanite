@@ -13,7 +13,7 @@
 #include "blockchain.hpp"
 
 #define TX_BRANCH_FACTOR 10
-#define MIN_FEE_TO_ENTER_MEMPOOL 1
+#define MIN_FEE_TO_ENTER_MEMPOOL 0
 
 MemPool::MemPool(HostManager& h, BlockChain& b) : hosts(h), blockchain(b) {
     shutdown = false;
@@ -130,13 +130,14 @@ ExecutionStatus MemPool::addTransaction(Transaction t) {
         return BALANCE_TOO_LOW;
     }
 
-    if (transactionQueue.size() >= (MAX_TRANSACTIONS_PER_BLOCK - 1)) {
+    // omitted the -1 since we wont pay our validators (rip)
+    if (transactionQueue.size() >= MAX_TRANSACTIONS_PER_BLOCK) {
         return QUEUE_FULL;
     }
 
     transactionQueue.insert(t);
 
-    if (transactionQueue.size() >= (MAX_TRANSACTIONS_PER_BLOCK - 1)) {
+    if (transactionQueue.size() >= MAX_TRANSACTIONS_PER_BLOCK) {
         // TODO: START PBFT
         Logger::logStatus("TRANSACTION QUEUE FULL!!!!!");
     }

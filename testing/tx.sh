@@ -53,7 +53,7 @@ cd ..
 # create n transactions
 for n in $(seq 1 $N)
 do
-	TX=$(./bin/tx $PUBKEY $PRIVKEY $TO $AMOUNT 1 $RANDOM)
+	TX=$(./bin/tx $PUBKEY $PRIVKEY $TO $AMOUNT 0 $RANDOM)
 
 	echo $TX
 

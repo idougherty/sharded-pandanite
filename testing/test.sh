@@ -4,7 +4,7 @@
 # 	- n: number of peers
 #	- d: delay in seconds(for sleep)
 # invokes ./server [n], sleep [d], ./peers [n]
-./server.sh $1
+./runserver.sh $1
 sleep $2
 ./peers.sh $1
 

@@ -377,6 +377,7 @@ void PandaniteServer::run(json config) {
 
 
     auto addPeerHandler = [&manager](auto *res, auto *req) {
+	cout << "ADD PEER HANDLER INVOKED" << endl;
         rateLimit(manager, res);
         sendCorsHeaders(res);
         res->onAborted([res]() {

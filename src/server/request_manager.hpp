@@ -9,6 +9,7 @@
 #include "../core/common.hpp"
 #include "blockchain.hpp"
 #include "mempool.hpp"
+#include "pbft.hpp"
 #include "rate_limiter.hpp"
 using namespace std;
 
@@ -18,7 +19,7 @@ class RequestManager {
         RequestManager(HostManager& hosts, string ledgerPath="", string blockPath="", string txdbPath="");
         ~RequestManager();
         bool acceptRequest(std::string& ip);
-        json addTransaction(Transaction& t);
+        json submitTransaction(Transaction& t);
         json getProofOfWork();
         json submitProofOfWork(Block & block);
         json getTransactionQueue();
@@ -43,9 +44,11 @@ class RequestManager {
         void deleteDB();
         void enableRateLimiting(bool enabled);
     protected:
+        ExecutionStatus addTransaction(Transaction& t);
         bool limitRequests;
         HostManager& hosts;
         std::shared_ptr<RateLimiter> rateLimiter;
         std::shared_ptr<BlockChain> blockchain;
         std::shared_ptr<MemPool> mempool;
+        std::shared_ptr<PBFTManager> pbftManager;
 };

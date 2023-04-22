@@ -691,7 +691,7 @@ void PandaniteServer::run(json config) {
         });
     };
 
-    auto addTransactionHandler = [&manager](auto *res, auto *req) {
+    auto submitTransactionHandler = [&manager](auto *res, auto *req) {
         rateLimit(manager, res);
         sendCorsHeaders(res);
         res->onAborted([res]() {
@@ -715,7 +715,7 @@ void PandaniteServer::run(json config) {
                         for (int i = 0; i < numTransactions; i++) {
                             TransactionInfo t = transactionInfoFromBuffer(buffer.c_str());
                             Transaction tx(t);
-                            response.push_back(manager.addTransaction(tx));
+                            response.push_back(manager.submitTransaction(tx));
                         }
                         res->end(response.dump());
                     }
@@ -728,7 +728,7 @@ void PandaniteServer::run(json config) {
         });
     };
 
-    auto addTransactionJSONHandler = [&manager](auto *res, auto *req) {
+    auto submitTransactionJSONHandler = [&manager](auto *res, auto *req) {
         rateLimit(manager, res);
         sendCorsHeaders(res);
         res->onAborted([res]() {
@@ -747,7 +747,7 @@ void PandaniteServer::run(json config) {
                             Transaction tx(item);
                             json result;
                             result["txid"] = SHA256toString(tx.hashContents());
-                            result["status"] = manager.addTransaction(tx)["status"];
+                            result["status"] = manager.submitTransaction(tx)["status"];
                             response.push_back(result);
                             // only add a maximum of 100 transactions per request
                             if (response.size() > 100) break;
@@ -756,7 +756,7 @@ void PandaniteServer::run(json config) {
                         Transaction tx(parsed);
                         json result;
                         result["txid"] = SHA256toString(tx.hashContents());
-                        result["status"] = manager.addTransaction(tx)["status"];
+                        result["status"] = manager.submitTransaction(tx)["status"];
                         response.push_back(result);
                     }
                     res->end(response.dump());
@@ -872,8 +872,8 @@ void PandaniteServer::run(json config) {
         .get("/synctx", getTxHandler)
         .get("/create_wallet", createWalletHandler)
         .post("/create_transaction", createTransactionHandler)
-        .post("/add_transaction", addTransactionHandler)
-        .post("/add_transaction_json", addTransactionJSONHandler)
+        .post("/add_transaction", submitTransactionHandler)
+        .post("/add_transaction_json", submitTransactionJSONHandler)
         .post("/verify_transaction", verifyTransactionHandler)
         .options("/name", corsHandler)
         .options("/total_work", corsHandler)

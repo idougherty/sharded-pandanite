@@ -73,23 +73,10 @@ bool RequestManager::acceptRequest(std::string& ip) {
     return this->rateLimiter->limit(ip);
 }
 
-json RequestManager::submitTransaction(Transaction& t) {
+json RequestManager::addTransaction(Transaction& t) {
     json result;
-    result["status"] = executionStatusAsString(this->addTransaction(t));
+    result["status"] = executionStatusAsString(this->mempool->addTransaction(t));
     return result;
-}
-
-ExecutionStatus RequestManager::addTransaction(Transaction& t) {
-    ExecutionStatus status = this->mempool->addTransaction(t);
-
-    if(this->mempool->size() >= MAX_TRANSACTIONS_PER_BLOCK) {
-        RequestManager & rm = *this;
-        std::thread([&rm](){
-            rm.pbftManager->proposeBlock();
-        }).detach();
-    }
-
-    return status;
 }
 
 json RequestManager::submitProofOfWork(Block& newBlock) {
@@ -337,6 +324,26 @@ json RequestManager::getStats() {
 
 json RequestManager::proposeBlock(Block &block) {
     this->pbftManager->prePrepare(block);
+
+    json ret;
+    ret["status"] = executionStatusAsString(SUCCESS);
+    return ret;
+}
+
+json RequestManager::handlePBFTMessage(SignedMessage message) {
+    switch(message.type) {
+        case PREPARING:
+            this->pbftManager->prepare(message);
+            break;
+        case COMMITTING:
+            this->pbftManager->commit(message);
+            break;
+        case ROUND_CHANGE:
+            this->pbftManager->roundChange(message);
+            break;
+        default:
+            Logger::logStatus("PBFT MESSAGE HAS THE WRONG TYPE!");
+    }
 
     json ret;
     ret["status"] = executionStatusAsString(SUCCESS);

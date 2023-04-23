@@ -34,3 +34,34 @@ bool checkSignature(string content, TransactionSignature signature, PublicKey si
 bool checkSignature(const char* bytes, size_t len, TransactionSignature signature, PublicKey signingKey);
 SHA256Hash mineHash(SHA256Hash target, unsigned char challengeSize, bool usePufferfish=false);
 bool verifyHash(SHA256Hash& target, SHA256Hash& nonce, unsigned char challengeSize, bool usePufferfish = false, bool useCache = false);
+
+enum PBFTState {
+    IDLE,
+    PROPOSING,
+    PREPREPARING,
+    PREPARING,
+    COMMITTING,
+    ROUND_CHANGE,
+};
+
+struct SignedMessage {
+    SHA256Hash hash;
+    PublicKey publicKey;
+    TransactionSignature signature;
+    PBFTState type;
+
+    bool operator==(const SignedMessage& other) const {
+        return (signature == other.signature) && (hash == other.hash) && (publicKey == other.publicKey); 
+    }
+};
+
+struct MessageHash {
+public:
+	size_t operator()(const SignedMessage msg) const 
+    {
+		return std::hash<string>()(signatureToString(msg.signature));
+	}
+};
+
+SignedMessage signedMessageFromBuffer(const char* buffer);
+void signedMessageToBuffer(SignedMessage msg, char* buffer);

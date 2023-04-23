@@ -20,3 +20,4 @@ void readRawTransactions(string host_url, vector<Transaction>& transactions);
 void readRawHeaders(string host_url, int startId, int endId, vector<BlockHeader>& blockHeaders);
 
 json sendBlockProposal(string host_url, Block block);
+json sendPBFTMessage(string host_url, SignedMessage message);

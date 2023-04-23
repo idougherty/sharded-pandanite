@@ -5,6 +5,8 @@
 #include "../external/http.hpp"
 #include "constants.hpp"
 #include "helpers.hpp"
+// #include "crypto.hpp"
+#include "logger.hpp"
 using namespace std;
 
 uint32_t getCurrentBlockCount(string host_url) {
@@ -192,10 +194,32 @@ json sendBlockProposal(string host_url, Block block) {
         transactionInfoToBuffer(tx, ptr);
         ptr += TRANSACTIONINFO_BUFFER_SIZE;
     }
-    http::Request request(host_url + "/propose_block");
+    http::Request request(host_url + "/pbft_propose_block");
     const auto response = request.send("POST", bytes, {
         "Content-Type: application/octet-stream"
     }, std::chrono::milliseconds{TIMEOUT_SUBMIT_MS});
     string responseStr = std::string{response.body.begin(), response.body.end()};
     return json::parse(responseStr);  
+}
+
+json sendPBFTMessage(string host_url, SignedMessage message) {
+    
+    //TODO: move buffer building out for broadcasts for efficiency
+    vector<uint8_t> bytes(sizeof(SignedMessage));
+    char* ptr = (char*) bytes.data();
+    
+    signedMessageToBuffer(message, ptr);
+
+    Logger::logStatus("SENDING SIGNED MESSAGE!");
+    Logger::logStatus("state: " + to_string(message.type));
+    Logger::logStatus("hash: " + SHA256toString(message.hash));
+    Logger::logStatus("signature: " + signatureToString(message.signature));
+    Logger::logStatus("publicKey: " + publicKeyToString(message.publicKey));
+    
+    http::Request request(host_url + "/pbft_message");
+    const auto response = request.send("POST", bytes, {
+        "Content-Type: application/octet-stream"
+    }, std::chrono::milliseconds{TIMEOUT_SUBMIT_MS});
+    string responseStr = std::string{response.body.begin(), response.body.end()};
+    return json::parse(responseStr);
 }

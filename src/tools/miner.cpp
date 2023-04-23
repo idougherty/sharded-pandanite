@@ -74,16 +74,13 @@ void get_work(PublicWalletAddress wallet, HostManager& hosts, string& customHost
             }
 
             newBlock.setId(nextBlock);
-            newBlock.addTransaction(fee);
 
-            TransactionAmount total = problem["miningFee"];
             if (newBlock.getTimestamp() < lastTimestamp) {
                 newBlock.setTimestamp(lastTimestamp);
             }
         
             for(auto t : transactions) {
                 newBlock.addTransaction(t);
-                total += t.getTransactionFee();
             }
             
             MerkleTree m;
@@ -92,14 +89,10 @@ void get_work(PublicWalletAddress wallet, HostManager& hosts, string& customHost
             newBlock.setDifficulty(challengeSize);
             newBlock.setLastBlockHash(lastHash);
 
-            last_difficulty = challengeSize;
-            last_block_id = currCount;
-            blockstart = std::time(0);
-
             SHA256Hash solution = mineHash(newBlock.getHash(), challengeSize, newBlock.getId() > PUFFERFISH_START_BLOCK);
             newBlock.setNonce(solution);
             Logger::logStatus("Submitting block...");
-            auto result = submitBlock(host, newBlock);
+            auto result = sendBlockProposal(host, newBlock);
             if (result.contains("status") && string(result["status"]) == "SUCCESS")  {
                 Logger::logStatus(GREEN + "[ ACCEPTED ] " + RESET );
             } else {

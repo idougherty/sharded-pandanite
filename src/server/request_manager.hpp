@@ -19,7 +19,7 @@ class RequestManager {
         RequestManager(HostManager& hosts, string ledgerPath="", string blockPath="", string txdbPath="");
         ~RequestManager();
         bool acceptRequest(std::string& ip);
-        json submitTransaction(Transaction& t);
+        json addTransaction(Transaction& t);
         json getProofOfWork();
         json submitProofOfWork(Block & block);
         json getTransactionQueue();
@@ -35,6 +35,7 @@ class RequestManager {
         json getMineStatus(uint32_t blockId);
         json addPeer(string address, uint64_t time, string version, string network);
         json proposeBlock(Block& b);
+        json handlePBFTMessage(SignedMessage b);
         BlockHeader getBlockHeader(uint32_t blockId);
         std::pair<uint8_t*, size_t> getRawBlockData(uint32_t blockId);
         std::pair<char*, size_t> getRawTransactionData();
@@ -45,7 +46,6 @@ class RequestManager {
         void deleteDB();
         void enableRateLimiting(bool enabled);
     protected:
-        ExecutionStatus addTransaction(Transaction& t);
         bool limitRequests;
         HostManager& hosts;
         std::shared_ptr<RateLimiter> rateLimiter;

@@ -691,7 +691,7 @@ void PandaniteServer::run(json config) {
         });
     };
 
-    auto submitTransactionHandler = [&manager](auto *res, auto *req) {
+    auto addTransactionHandler = [&manager](auto *res, auto *req) {
         rateLimit(manager, res);
         sendCorsHeaders(res);
         res->onAborted([res]() {
@@ -715,7 +715,7 @@ void PandaniteServer::run(json config) {
                         for (int i = 0; i < numTransactions; i++) {
                             TransactionInfo t = transactionInfoFromBuffer(buffer.c_str());
                             Transaction tx(t);
-                            response.push_back(manager.submitTransaction(tx));
+                            response.push_back(manager.addTransaction(tx));
                         }
                         res->end(response.dump());
                     }
@@ -728,7 +728,7 @@ void PandaniteServer::run(json config) {
         });
     };
 
-    auto submitTransactionJSONHandler = [&manager](auto *res, auto *req) {
+    auto addTransactionJSONHandler = [&manager](auto *res, auto *req) {
         rateLimit(manager, res);
         sendCorsHeaders(res);
         res->onAborted([res]() {
@@ -747,7 +747,7 @@ void PandaniteServer::run(json config) {
                             Transaction tx(item);
                             json result;
                             result["txid"] = SHA256toString(tx.hashContents());
-                            result["status"] = manager.submitTransaction(tx)["status"];
+                            result["status"] = manager.addTransaction(tx)["status"];
                             response.push_back(result);
                             // only add a maximum of 100 transactions per request
                             if (response.size() > 100) break;
@@ -756,7 +756,7 @@ void PandaniteServer::run(json config) {
                         Transaction tx(parsed);
                         json result;
                         result["txid"] = SHA256toString(tx.hashContents());
-                        result["status"] = manager.submitTransaction(tx)["status"];
+                        result["status"] = manager.addTransaction(tx)["status"];
                         response.push_back(result);
                     }
                     res->end(response.dump());
@@ -856,7 +856,7 @@ void PandaniteServer::run(json config) {
                     if (buffer.length() < BLOCKHEADER_BUFFER_SIZE + TRANSACTIONINFO_BUFFER_SIZE) {
                         json response;
                         response["error"] = "Malformed block";
-                        Logger::logError("/propose_block","Malformed block");
+                        Logger::logError("/pbft_propose_block","Malformed block");
                         res->end(response.dump());
                     } else {
                         char * ptr = (char*)buffer.c_str();
@@ -865,7 +865,7 @@ void PandaniteServer::run(json config) {
                         if (buffer.size() != BLOCKHEADER_BUFFER_SIZE + blockH.numTransactions*TRANSACTIONINFO_BUFFER_SIZE) {
                             json response;
                             response["error"] = "Malformed block";
-                            Logger::logError("/propose_block","Malformed block");
+                            Logger::logError("/pbft_propose_block","Malformed block");
                             res->end(response.dump());
                             return;
                         }
@@ -875,7 +875,7 @@ void PandaniteServer::run(json config) {
                             json response;
                             response["error"] = "Too many transactions";
                             res->end(response.dump());
-                            Logger::logError("/propose_block","Too many transactions");
+                            Logger::logError("/pbft_propose_block","Too many transactions");
                         } else {
                             for(int j = 0; j < blockH.numTransactions; j++) {
                                 TransactionInfo t = transactionInfoFromBuffer(ptr);
@@ -892,12 +892,58 @@ void PandaniteServer::run(json config) {
                     json response;
                     response["error"] = string(e.what());
                     res->end(response.dump());
-                    Logger::logError("/propose_block", e.what());
+                    Logger::logError("/pbft_propose_block", e.what());
                 } catch(...) {
                     json response;
                     response["error"] = "unknown";
                     res->end(response.dump());
-                    Logger::logError("/propose_block", "unknown");
+                    Logger::logError("/pbft_propose_block", "unknown");
+                }
+                
+            }
+        });
+    };
+
+    auto pbftMessageHandler = [&manager](auto *res, auto *req) {
+        rateLimit(manager, res);
+        sendCorsHeaders(res);
+        res->onAborted([res]() {
+            res->end("ABORTED");
+        });
+        std::string buffer;
+        res->onData([res, buffer = std::move(buffer), &manager](std::string_view data, bool last) mutable {
+            buffer.append(data.data(), data.length());
+            checkBuffer(buffer, res);
+            if (last) {
+                try {
+                    if (buffer.length() < sizeof(SignedMessage)) {
+                        json response;
+                        response["error"] = "Malformed message";
+                        Logger::logError("/pbft_message","Malformed block");
+                        res->end(response.dump());
+                    } else {
+                        char * ptr = (char*)buffer.c_str();
+                        SignedMessage message = signedMessageFromBuffer(ptr);
+
+                        Logger::logStatus("RECEIVED SIGNED MESSAGE!");
+                        Logger::logStatus("state: " + to_string(message.type));
+                        Logger::logStatus("hash: " + SHA256toString(message.hash));
+                        Logger::logStatus("signature: " + signatureToString(message.signature));
+                        Logger::logStatus("publicKey: " + publicKeyToString(message.publicKey));
+
+                        json response = manager.handlePBFTMessage(message);
+                        res->end(response.dump());
+                    }
+                } catch(const std::exception &e) {
+                    json response;
+                    response["error"] = string(e.what());
+                    res->end(response.dump());
+                    Logger::logError("/pbft_message", e.what());
+                } catch(...) {
+                    json response;
+                    response["error"] = "unknown";
+                    res->end(response.dump());
+                    Logger::logError("/pbft_message", "unknown");
                 }
                 
             }
@@ -929,15 +975,16 @@ void PandaniteServer::run(json config) {
         .get("/getnetworkhashrate", getNetworkHashrateHandler)
         .post("/add_peer", addPeerHandler)
         .post("/submit", submitHandler)
-        .post("/propose_block", proposalHandler)
+        .post("/pbft_propose_block", proposalHandler)
+        .post("/pbft_message", pbftMessageHandler)
         .get("/gettx", getTxHandler)
         .get("/sync", syncHandler)
         .get("/block_headers", blockHeaderHandler)
         .get("/synctx", getTxHandler)
         .get("/create_wallet", createWalletHandler)
         .post("/create_transaction", createTransactionHandler)
-        .post("/add_transaction", submitTransactionHandler)
-        .post("/add_transaction_json", submitTransactionJSONHandler)
+        .post("/add_transaction", addTransactionHandler)
+        .post("/add_transaction_json", addTransactionJSONHandler)
         .post("/verify_transaction", verifyTransactionHandler)
         .options("/name", corsHandler)
         .options("/total_work", corsHandler)
@@ -954,7 +1001,8 @@ void PandaniteServer::run(json config) {
         .options("/getnetworkhashrate", corsHandler)
         .options("/add_peer", corsHandler)
         .options("/submit", corsHandler)
-        .options("/propose_block", corsHandler)
+        .options("/pbft_propose_block", corsHandler)
+        .options("/pbft_message", corsHandler)
         .options("/gettx", corsHandler)
         .options("/gettx", corsHandler)
         .options("/sync", corsHandler)

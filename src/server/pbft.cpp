@@ -5,10 +5,11 @@
 #include "mempool.hpp"
 #include "pbft.hpp"
 
-void broadcastMessage(HostManager& hm, SignedMessage msg) {
+void broadcastMessage(HostManager& hm, PBFTState type, SignedMessage msg) {
     std::vector<string> hosts = hm.getHosts(false);
     for(string host : hosts) {
         Logger::logStatus("Broadcasting new message to " + host);
+        sendPBFTMessage(host, msg);
     }
 }
 
@@ -18,14 +19,14 @@ void broadcastBlock(HostManager& hm, Block block) {
         Logger::logStatus("Broadcasting new block to " + host);
         sendBlockProposal(host, block);
     }
-
 }
 
-SignedMessage createPBFTMessage(SHA256Hash hash, PublicKey pub, PrivateKey priv) {
+SignedMessage createPBFTMessage(SHA256Hash hash, PublicKey pub, PrivateKey priv, PBFTState type) {
     SignedMessage msg;
     msg.hash = hash;
     msg.publicKey = pub;
     msg.signature = signWithPrivateKey(SHA256toString(hash), pub, priv);
+    msg.type = type;
 
     return msg;
 }
@@ -36,16 +37,16 @@ PBFTManager::PBFTManager(HostManager& h, BlockChain& b, MemPool& m) : hosts(h), 
     state = IDLE;
 }
 
-void PBFTManager::proposeBlock() {
-    if(state != IDLE || !isProposer()) return;
-    state = PROPOSING;
+// void PBFTManager::proposeBlock() {
+//     if(state != IDLE || !isProposer()) return;
+//     state = PROPOSING;
 
-    Logger::logStatus("Block proposal called!");
+//     Logger::logStatus("Block proposal called!");
 
-    Block block = createBlock();
-    blockPool.insert(block);
-    broadcastBlock(hosts, block);
-};
+//     Block block = createBlock();
+//     blockPool.insert(block);
+//     broadcastBlock(hosts, block);
+// };
 
 void PBFTManager::prePrepare(Block& block) {
     if(blockPool.find(block) != blockPool.end())
@@ -62,12 +63,9 @@ void PBFTManager::prePrepare(Block& block) {
     blockPool.insert(block);
     broadcastBlock(hosts, block);
 
-    SignedMessage msg = createPBFTMessage(block.getHash(), user.getPublicKey(), user.getPrivateKey());
-    // preparePool.insert(msg);
-    // broadcastMessage(hosts, msg);
-    
-    // sign the block and add it to the prepare pool
-    // broadcast prepare message with signed block
+    SignedMessage msg = createPBFTMessage(block.getHash(), user.getPublicKey(), user.getPrivateKey(), PREPARING);
+    preparePool.insert(msg);
+    broadcastMessage(hosts, PREPARING, msg);
 };
 
 void PBFTManager::prepare(SignedMessage msg) {
@@ -97,45 +95,6 @@ void PBFTManager::roundChange(SignedMessage msg) {
     // then clear the transaction queue
 }
 
-Block PBFTManager::createBlock() {
-    Block newBlock;
-
-    int chainLength = blockchain.getBlockCount();
-    int challengeSize = blockchain.getDifficulty();
-    SHA256Hash lastHash = blockchain.getLastHash();
-
-    uint64_t lastTimestamp = std::time(0);
-    lastTimestamp = blockchain.getBlockHeader(chainLength).timestamp;
-
-    // check that our mined blocks timestamp is *at least* as old as the tip of the chain.
-    // if it's not then your system clock is wonky, so we just make up a date:
-    if (newBlock.getTimestamp() < lastTimestamp) {
-        newBlock.setTimestamp(lastTimestamp + 1);
-    }
-
-    std::vector<Transaction> txs = mempool.getTransactions();
-    for(auto tx : txs) {
-        newBlock.addTransaction(tx);
-    }
-
-    newBlock.setId(chainLength + 1);
-
-    if (newBlock.getTimestamp() < lastTimestamp) {
-        newBlock.setTimestamp(lastTimestamp);
-    }
-
-    MerkleTree m;
-    m.setItems(newBlock.getTransactions());
-    newBlock.setMerkleRoot(m.getRootHash());
-    newBlock.setDifficulty(challengeSize);
-    newBlock.setLastBlockHash(lastHash);
-
-    SHA256Hash solution = mineHash(newBlock.getHash(), challengeSize, newBlock.getId() > PUFFERFISH_START_BLOCK);
-    newBlock.setNonce(solution);
-
-    return newBlock;
-}
-
-bool PBFTManager::isProposer() {
-    return hosts.getAddress() == "http://localhost:3000";
-}
+// bool PBFTManager::isProposer() {
+//     return hosts.getAddress() == "http://localhost:3000";
+// }

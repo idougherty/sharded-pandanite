@@ -6,60 +6,71 @@
 #include "pbft.hpp"
 
 void broadcastMessage(HostManager& hm, SignedMessage msg) {
-    std::vector<string> hosts = hm.getHosts();
+    std::vector<string> hosts = hm.getHosts(false);
     for(string host : hosts) {
-        Logger::logStatus("Messaging " + host);
+        Logger::logStatus("Broadcasting new message to " + host);
     }
 }
 
 void broadcastBlock(HostManager& hm, Block block) {
-    Logger::logStatus("Broadcasting! 1");
-    std::vector<string> hosts = hm.getHosts();
-    Logger::logStatus("Broadcasting! 2");
+    std::vector<string> hosts = hm.getHosts(false);
     for(string host : hosts) {
-        Logger::logStatus("Messaging " + host);
+        Logger::logStatus("Broadcasting new block to " + host);
+        sendBlockProposal(host, block);
     }
 
-    // json stats = hm.getHeaderChainStats();
-    // for (auto& peer : stats.items()) {
-    //     Logger::logStatus(peer.key());
-    // }
+}
 
+SignedMessage createPBFTMessage(SHA256Hash hash, PublicKey pub, PrivateKey priv) {
+    SignedMessage msg;
+    msg.hash = hash;
+    msg.publicKey = pub;
+    msg.signature = signWithPrivateKey(SHA256toString(hash), pub, priv);
+
+    return msg;
 }
 
 PBFTManager::PBFTManager(HostManager& h, BlockChain& b, MemPool& m) : hosts(h), blockchain(b), mempool(m) {
     Logger::logStatus("PBFTManager initialized!");
+    user = User();
     state = IDLE;
 }
 
 void PBFTManager::proposeBlock() {
-    if(state == PROPOSING) return;
+    if(state != IDLE || !isProposer()) return;
     state = PROPOSING;
 
     Logger::logStatus("Block proposal called!");
 
     Block block = createBlock();
-
-    Logger::logStatus("Created new block!");
-
+    blockPool.insert(block);
     broadcastBlock(hosts, block);
-    Logger::logStatus("Broadcasted block!");
 };
 
-void PBFTManager::prePrepare() {
-    Logger::logStatus("PrePrepare called!");
-    // check validity of the preprepare block
-    // if valid add this block to the blockpool
+void PBFTManager::prePrepare(Block& block) {
+    if(blockPool.find(block) != blockPool.end())
+        return;
 
-    // broadcast preprepare message with the block
-    // SignedMessage msg = createPBFTMessage();
+    Logger::logStatus("PrePrepare called!");
+
+    ExecutionStatus isValid = blockchain.validateBlock(block);
+    Logger::logStatus("Validity of the block: " + executionStatusAsString(isValid));
+
+    if(isValid != SUCCESS)
+        return;
+
+    blockPool.insert(block);
+    broadcastBlock(hosts, block);
+
+    SignedMessage msg = createPBFTMessage(block.getHash(), user.getPublicKey(), user.getPrivateKey());
+    // preparePool.insert(msg);
     // broadcastMessage(hosts, msg);
     
     // sign the block and add it to the prepare pool
     // broadcast prepare message with signed block
 };
 
-void PBFTManager::prepare() {
+void PBFTManager::prepare(SignedMessage msg) {
     Logger::logStatus("Prepare called!");
     // check validity of the prepare message
     // if valid add message to the prepare pool
@@ -68,7 +79,7 @@ void PBFTManager::prepare() {
     // then add data to commit pool and broadcast commit
 }
 
-void PBFTManager::commit() {
+void PBFTManager::commit(SignedMessage msg) {
     Logger::logStatus("Commit called!");
     // check validity of the commit message
     // if valid add message to the commitpool
@@ -78,7 +89,7 @@ void PBFTManager::commit() {
 }
 
 // do we need this step?
-void PBFTManager::roundChange() {
+void PBFTManager::roundChange(SignedMessage msg) {
     Logger::logStatus("Round change called!");
     // check validity of the round change message
     // add to message pool and broadcast
@@ -125,11 +136,6 @@ Block PBFTManager::createBlock() {
     return newBlock;
 }
 
-SignedMessage createPBFTMessage(SHA256Hash hash, PublicKey pub, PrivateKey priv) {
-    SignedMessage msg;
-    msg.hash = hash;
-    msg.publicKey = pub;
-    msg.signature = signWithPrivateKey(SHA256toString(hash), pub, priv);
-
-    return msg;
+bool PBFTManager::isProposer() {
+    return hosts.getAddress() == "http://localhost:3000";
 }

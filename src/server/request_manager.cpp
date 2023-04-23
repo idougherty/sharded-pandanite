@@ -334,3 +334,11 @@ json RequestManager::getStats() {
     info["last_block_time"]= timeDelta;
     return info;
 }
+
+json RequestManager::proposeBlock(Block &block) {
+    this->pbftManager->prePrepare(block);
+
+    json ret;
+    ret["status"] = executionStatusAsString(SUCCESS);
+    return ret;
+}

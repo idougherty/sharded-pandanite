@@ -377,7 +377,6 @@ void PandaniteServer::run(json config) {
 
 
     auto addPeerHandler = [&manager](auto *res, auto *req) {
-	cout << "ADD PEER HANDLER INVOKED" << endl;
         rateLimit(manager, res);
         sendCorsHeaders(res);
         res->onAborted([res]() {
@@ -842,6 +841,69 @@ void PandaniteServer::run(json config) {
         res->writeHeader("Content-Type", "text/html; charset=utf-8")->end(response);
     };
 
+    auto proposalHandler = [&manager](auto *res, auto *req) {
+        rateLimit(manager, res);
+        sendCorsHeaders(res);
+        res->onAborted([res]() {
+            res->end("ABORTED");
+        });
+        std::string buffer;
+        res->onData([res, buffer = std::move(buffer), &manager](std::string_view data, bool last) mutable {
+            buffer.append(data.data(), data.length());
+            checkBuffer(buffer, res);
+            if (last) {
+                try {
+                    if (buffer.length() < BLOCKHEADER_BUFFER_SIZE + TRANSACTIONINFO_BUFFER_SIZE) {
+                        json response;
+                        response["error"] = "Malformed block";
+                        Logger::logError("/propose_block","Malformed block");
+                        res->end(response.dump());
+                    } else {
+                        char * ptr = (char*)buffer.c_str();
+                        BlockHeader blockH = blockHeaderFromBuffer(ptr);
+                        ptr += BLOCKHEADER_BUFFER_SIZE;
+                        if (buffer.size() != BLOCKHEADER_BUFFER_SIZE + blockH.numTransactions*TRANSACTIONINFO_BUFFER_SIZE) {
+                            json response;
+                            response["error"] = "Malformed block";
+                            Logger::logError("/propose_block","Malformed block");
+                            res->end(response.dump());
+                            return;
+                        }
+
+                        vector<Transaction> transactions;
+                        if (blockH.numTransactions > MAX_TRANSACTIONS_PER_BLOCK) {
+                            json response;
+                            response["error"] = "Too many transactions";
+                            res->end(response.dump());
+                            Logger::logError("/propose_block","Too many transactions");
+                        } else {
+                            for(int j = 0; j < blockH.numTransactions; j++) {
+                                TransactionInfo t = transactionInfoFromBuffer(ptr);
+                                ptr += TRANSACTIONINFO_BUFFER_SIZE;
+                                Transaction tx(t);
+                                transactions.push_back(tx);
+                            }
+                            Block block(blockH, transactions);
+                            json response = manager.proposeBlock(block);
+                            res->end(response.dump());
+                        }
+                    }
+                } catch(const std::exception &e) {
+                    json response;
+                    response["error"] = string(e.what());
+                    res->end(response.dump());
+                    Logger::logError("/propose_block", e.what());
+                } catch(...) {
+                    json response;
+                    response["error"] = "unknown";
+                    res->end(response.dump());
+                    Logger::logError("/propose_block", "unknown");
+                }
+                
+            }
+        });
+    };
+
  
     uWS::App()
         .get("/", mainHandler)
@@ -867,6 +929,7 @@ void PandaniteServer::run(json config) {
         .get("/getnetworkhashrate", getNetworkHashrateHandler)
         .post("/add_peer", addPeerHandler)
         .post("/submit", submitHandler)
+        .post("/propose_block", proposalHandler)
         .get("/gettx", getTxHandler)
         .get("/sync", syncHandler)
         .get("/block_headers", blockHeaderHandler)
@@ -891,6 +954,7 @@ void PandaniteServer::run(json config) {
         .options("/getnetworkhashrate", corsHandler)
         .options("/add_peer", corsHandler)
         .options("/submit", corsHandler)
+        .options("/propose_block", corsHandler)
         .options("/gettx", corsHandler)
         .options("/gettx", corsHandler)
         .options("/sync", corsHandler)

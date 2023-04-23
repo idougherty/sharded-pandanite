@@ -116,7 +116,6 @@ json verifyTransaction(string host_url, Transaction& t) {
         "Content-Type: application/octet-stream"
     },std::chrono::milliseconds{TIMEOUT_MS});
     std::string responseStr = std::string{response.body.begin(), response.body.end()};
-    cout<<"|"<<responseStr<<"|"<<endl;
     return json::parse(responseStr);
 }
 
@@ -178,4 +177,25 @@ void readRawTransactions(string host_url, vector<Transaction>& transactions) {
         transactions.push_back(Transaction(t));
         curr+= TRANSACTIONINFO_BUFFER_SIZE;
     }
+}
+
+json sendBlockProposal(string host_url, Block block) {
+    BlockHeader b = block.serialize();
+    vector<uint8_t> bytes(BLOCKHEADER_BUFFER_SIZE + TRANSACTIONINFO_BUFFER_SIZE * b.numTransactions);
+
+    char* ptr = (char*) bytes.data();
+    blockHeaderToBuffer(b, ptr);
+    ptr += BLOCKHEADER_BUFFER_SIZE;
+
+    for(auto t : block.getTransactions()) {
+        TransactionInfo tx = t.serialize();
+        transactionInfoToBuffer(tx, ptr);
+        ptr += TRANSACTIONINFO_BUFFER_SIZE;
+    }
+    http::Request request(host_url + "/propose_block");
+    const auto response = request.send("POST", bytes, {
+        "Content-Type: application/octet-stream"
+    }, std::chrono::milliseconds{TIMEOUT_SUBMIT_MS});
+    string responseStr = std::string{response.body.begin(), response.body.end()};
+    return json::parse(responseStr);  
 }

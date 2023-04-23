@@ -12,6 +12,6 @@ do
 	mkdir server$s
 	cd server$s
 	cp ../../genesis.json .
-	../../bin/keygen && ../../bin/server --local -ip http://localhost -p $((3000 + $s)) >> out.txt &
+	../../bin/server --local -ip http://localhost -p $((3000 + $s)) >> out.txt &
 	cd ..
 done

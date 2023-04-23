@@ -18,3 +18,5 @@ json submitBlock(string host_url, Block& b);
 void readRawBlocks(string host_url, int startId, int endId, vector<Block>& blocks);
 void readRawTransactions(string host_url, vector<Transaction>& transactions);
 void readRawHeaders(string host_url, int startId, int endId, vector<BlockHeader>& blockHeaders);
+
+json sendBlockProposal(string host_url, Block block);

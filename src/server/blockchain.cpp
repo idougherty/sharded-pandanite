@@ -370,7 +370,45 @@ ExecutionStatus BlockChain::addBlockSync(Block& block) {
         return this->addBlock(block);
     }
 }
-    
+
+ExecutionStatus BlockChain::validateBlock(Block &block) {
+    if (block.getTransactions().size() > MAX_TRANSACTIONS_PER_BLOCK) return INVALID_TRANSACTION_COUNT;
+    if (block.getId() != this->numBlocks + 1) return INVALID_BLOCK_ID;
+    if (block.getDifficulty() != this->difficulty) return INVALID_DIFFICULTY;
+    if (!block.verifyNonce()) return INVALID_NONCE;
+    if (block.getLastBlockHash() != this->getLastHash()) return INVALID_LASTBLOCK_HASH;
+    if (block.getId() != 1) {
+        // block must be less than 2 hrs into future from network time
+        uint64_t maxTime = this->hosts.getNetworkTimestamp() + 120*60;
+        if (block.getTimestamp() > maxTime) return BLOCK_TIMESTAMP_IN_FUTURE;
+
+        // block must be after the median timestamp of last 10 blocks
+        if (this->numBlocks > 10) {
+            vector<uint64_t> times;
+            for(int i = 0; i < 10; i++) {
+                Block b = this->getBlock(this->numBlocks - i);
+                times.push_back(b.getTimestamp());
+            }
+            std::sort(times.begin(), times.end());
+            // compute median
+            uint64_t medianTime;
+            if (times.size() % 2 == 0) {
+                medianTime = (times[times.size()/2] + times[times.size()/2 - 1])/2;
+            } else {
+                medianTime = times[times.size()/2];
+            }
+            if (block.getTimestamp() < medianTime) return BLOCK_TIMESTAMP_TOO_OLD;
+        }
+    }
+    // compute merkle tree and verify root matches;
+    MerkleTree m;
+    m.setItems(block.getTransactions());
+    SHA256Hash computedRoot = m.getRootHash();
+    // Logger::logStatus(SHA256toString(computedRoot));
+    if (block.getMerkleRoot() != computedRoot) return INVALID_MERKLE_ROOT;
+
+    return SUCCESS;
+}    
 
 ExecutionStatus BlockChain::addBlock(Block& block) {
     // check difficulty + nonce

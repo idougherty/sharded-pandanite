@@ -49,6 +49,7 @@ class BlockChain {
         void popBlock();
         void deleteDB();
         void closeDB();
+        ExecutionStatus validateBlock(Block& block);
         ExecutionStatus addBlock(Block& block);
     protected:
         bool isSyncing;

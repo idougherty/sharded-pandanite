@@ -49,14 +49,36 @@ string HostManager::computeAddress() {
                 break;
             }
         }
-
         if (!found) {
             Logger::logError("IP discovery", "Could not determine current IP address");
-        }
+	}
+	else{
+	    this->ip = ip;
+	}
     } else {
         this->address = this->ip + ":" + to_string(this->port);
     }
+    // convert ip to uint64_t first 16 bits for port, next 32 bits for ipv4
+    this->ipn = 0;
+    if( (signed)this->ip.find("localhost") > -1){
+        this->ipn = 127L << 40;
+	this->ipn |= 1 << 16;
+	this->ipn |= this->port;
+    }
+    else{
+	unsigned long a,b,c,d;
+	sscanf(ip.c_str(),"%lu.%lu.%lu.%lu", &a, &b, &c, &d);
+	this->ipn = a << 40;
+	this->ipn |= b << 32;
+	this->ipn |= c << 24;
+	this->ipn |= d << 16;
+	this->ipn |= this->port;
+    }
     return this->address;
+}
+
+uint64_t HostManager::getIPN(){
+    return this->ipn;
 }
 
 /*

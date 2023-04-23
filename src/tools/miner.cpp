@@ -53,6 +53,11 @@ void get_work(PublicWalletAddress wallet, HostManager& hosts, string& customHost
             vector<Transaction> transactions;
             readRawTransactions(host, transactions);
 
+            if(transactions.size() != MAX_TRANSACTIONS_PER_BLOCK) {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                continue;
+            }
+
             Logger::logStatus("[ NEW ] block = " + std::to_string(nextBlock) + ", difficulty = " + to_string(problem["challengeSize"]) + ", transactions = " + to_string(transactions.size()) + " - " + host);
 
             string lastHashStr = problem["lastHash"];
@@ -100,11 +105,19 @@ void get_work(PublicWalletAddress wallet, HostManager& hosts, string& customHost
                 Logger::logStatus(result.dump(4));
             }          
 
+            // WHILE TESTING ONLY SUBMIT ONE BLOCK
+            // in the future we need a mechanism to only start 
+            // mining once the last proposal is processed completely
+            return;
+
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
         } catch (const std::exception& e) {
             Logger::logStatus("Exception");
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+            // also temporary for testing
+            return;
         }
     }
 }

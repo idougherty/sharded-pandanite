@@ -17,6 +17,7 @@ class HostManager {
         string computeAddress();
         void refreshHostList();
         void startPingingPeers();
+	uint64_t getIPN();
 
         string getGoodHost() const;
         uint64_t getBlockCount() const;
@@ -41,7 +42,8 @@ class HostManager {
         mutable std::mutex lock;
         bool disabled;
         bool firewall;
-        string ip;
+        uint64_t ipn;
+	string ip;
         int port;
         string name;
         string address;

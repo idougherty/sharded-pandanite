@@ -17,7 +17,6 @@ class HostManager {
         string computeAddress();
         void refreshHostList();
         void startPingingPeers();
-	uint64_t getIPN();
 
         string getGoodHost() const;
         uint64_t getBlockCount() const;
@@ -35,6 +34,9 @@ class HostManager {
         void addPeer(string addr, uint64_t time, string version, string network);
         bool isDisabled();
         void syncHeadersWithPeers();
+	void genCommID(string nounce, string pubkey);
+	SHA256Hash getCommID();
+
     protected:
         vector<std::shared_ptr<HeaderChain>> currPeers; 
         std::shared_ptr<BlockStore> blockStore;
@@ -42,7 +44,6 @@ class HostManager {
         mutable std::mutex lock;
         bool disabled;
         bool firewall;
-        uint64_t ipn;
 	string ip;
         int port;
         string name;
@@ -50,6 +51,7 @@ class HostManager {
         string version;
         string minHostVersion;
         string networkName;
+	SHA256Hash commID;
         
         map<string,uint64_t> hostPingTimes;
         map<string,int32_t> peerClockDeltas;

@@ -113,11 +113,8 @@ void get_work(PublicWalletAddress wallet, HostManager& hosts, string& customHost
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
         } catch (const std::exception& e) {
-            Logger::logStatus("Exception");
+            Logger::logError("Exception", e.what());
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-            // also temporary for testing
-            return;
         }
     }
 }
@@ -146,7 +143,7 @@ int main(int argc, char **argv) {
         wallet = stringToWalletAddress(customWallet);
         Logger::logStatus("Running miner. Coins stored in : " + customWallet);
     }
-        
+
     Logger::logStatus("Starting miner on single thread");
     get_work(wallet, hosts, customIp);
 }

@@ -240,13 +240,14 @@ ExecutionStatus Executor::ExecuteBlock(Block& curr, Ledger& ledger, TransactionS
             return WALLET_SIGNATURE_MISMATCH;
         }
     }
-    if (!foundFee) {
-        return NO_MINING_FEE;
-    }
+    // TODO: ADD MINING FEE
+    // if (!foundFee) {
+    //     return NO_MINING_FEE;
+    // }
 
-    if (miningFee != blockMiningFee) {
-        return INCORRECT_MINING_FEE;
-    }
+    // if (miningFee != blockMiningFee) {
+    //     return INCORRECT_MINING_FEE;
+    // }
     for(auto t : curr.getTransactions()) {
         if (!t.isFee() && !t.signatureValid() && curr.getId() != 1) {
             return INVALID_SIGNATURE;

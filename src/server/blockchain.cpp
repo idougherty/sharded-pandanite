@@ -371,6 +371,85 @@ ExecutionStatus BlockChain::addBlockSync(Block& block) {
     }
 }
 
+ExecutionStatus validateTransaction(Transaction t, PublicWalletAddress& miner, Ledger& ledger, LedgerState & deltas, TransactionAmount blockMiningFee, uint32_t blockId) {
+    TransactionAmount amt = t.getAmount();
+    TransactionAmount fees = t.getTransactionFee();
+    PublicWalletAddress to = t.toWallet();
+    PublicWalletAddress from = t.fromWallet();
+
+    if (!t.isFee() && blockId > 1 && walletAddressFromPublicKey(t.getSigningKey()) != t.fromWallet()) {
+        return WALLET_SIGNATURE_MISMATCH;
+    }
+    
+    if (t.isFee()) {
+        if (amt ==  blockMiningFee) {
+            return SUCCESS;
+        } else {
+            return INCORRECT_MINING_FEE;
+        }
+    }
+
+    if (blockId == 1) { // special case genesis block
+    } else {
+        // from account must exist
+        if (!ledger.hasWallet(from)) {
+            return SENDER_DOES_NOT_EXIST;
+        }
+        TransactionAmount total = ledger.getWalletValue(from);
+        // must have enough for amt+fees
+        if (total < amt) {
+            return BALANCE_TOO_LOW;
+        }
+
+        total -= amt;
+
+        if (total < fees) {
+            return BALANCE_TOO_LOW;
+        }
+    }
+
+    return SUCCESS;
+}
+
+ExecutionStatus validateTransactions(Block& curr, Ledger& ledger, TransactionStore & txdb, LedgerState& deltas, TransactionAmount blockMiningFee) {
+    // try executing each transaction
+    bool foundFee = false;
+    PublicWalletAddress miner;
+    TransactionAmount miningFee;
+    for(auto t : curr.getTransactions()) {
+        if (t.isFee()) {
+            if (foundFee) return EXTRA_MINING_FEE;
+            miner = t.toWallet();
+            miningFee = t.getAmount();
+            foundFee = true;
+        } else if (txdb.hasTransaction(t) && curr.getId() != 1) {
+            return EXPIRED_TRANSACTION;
+        }
+        
+        if (!t.isFee() && curr.getId() > 1 && walletAddressFromPublicKey(t.getSigningKey()) != t.fromWallet()) {
+            return WALLET_SIGNATURE_MISMATCH;
+        }
+    }
+    // TODO: ADD MINING FEE
+    // if (!foundFee) {
+    //     return NO_MINING_FEE;
+    // }
+
+    // if (miningFee != blockMiningFee) {
+    //     return INCORRECT_MINING_FEE;
+    // }
+    for(auto t : curr.getTransactions()) {
+        if (!t.isFee() && !t.signatureValid() && curr.getId() != 1) {
+            return INVALID_SIGNATURE;
+        }
+        ExecutionStatus updateStatus = validateTransaction(t, miner, ledger, deltas, blockMiningFee, curr.getId());
+        if (updateStatus != SUCCESS) {
+            return updateStatus;
+        }
+    }
+    return SUCCESS;
+}
+
 ExecutionStatus BlockChain::validateBlock(Block &block) {
     if (block.getTransactions().size() > MAX_TRANSACTIONS_PER_BLOCK) return INVALID_TRANSACTION_COUNT;
     if (block.getId() != this->numBlocks + 1) return INVALID_BLOCK_ID;
@@ -407,7 +486,8 @@ ExecutionStatus BlockChain::validateBlock(Block &block) {
     // Logger::logStatus(SHA256toString(computedRoot));
     if (block.getMerkleRoot() != computedRoot) return INVALID_MERKLE_ROOT;
 
-    return SUCCESS;
+    LedgerState deltasFromBlock;
+    return validateTransactions(block, this->ledger, this->txdb, deltasFromBlock, this->getCurrentMiningFee(block.getId()));
 }    
 
 ExecutionStatus BlockChain::addBlock(Block& block) {

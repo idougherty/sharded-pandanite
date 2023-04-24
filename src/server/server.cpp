@@ -924,13 +924,6 @@ void PandaniteServer::run(json config) {
                     } else {
                         char * ptr = (char*)buffer.c_str();
                         SignedMessage message = signedMessageFromBuffer(ptr);
-
-                        Logger::logStatus("RECEIVED SIGNED MESSAGE!");
-                        Logger::logStatus("state: " + to_string(message.type));
-                        Logger::logStatus("hash: " + SHA256toString(message.hash));
-                        Logger::logStatus("signature: " + signatureToString(message.signature));
-                        Logger::logStatus("publicKey: " + publicKeyToString(message.publicKey));
-
                         json response = manager.handlePBFTMessage(message);
                         res->end(response.dump());
                     }

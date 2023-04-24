@@ -5,12 +5,11 @@
 #include "mempool.hpp"
 #include "pbft.hpp"
 
-void broadcastMessage(HostManager& hm, PBFTState type, SignedMessage msg) {
+void broadcastMessage(HostManager& hm, SignedMessage msg) {
     std::vector<string> hosts = hm.getHosts(false);
     for(string host : hosts) {
         Logger::logStatus("Broadcasting new message to " + host);
         
-        // sendPBFTMessage(host, msg);
         // Dispatching thread to prevent blocking
         std::thread([host, msg]() {
             sendPBFTMessage(host, msg);
@@ -39,7 +38,7 @@ SignedMessage createPBFTMessage(SHA256Hash hash, PublicKey pub, PrivateKey priv,
     SignedMessage msg;
     msg.hash = hash;
     msg.publicKey = pub;
-    msg.signature = signWithPrivateKey(SHA256toString(hash), pub, priv);
+    msg.signature = signWithPrivateKey((const char*)hash.data(), hash.size(), pub, priv);
     msg.type = type;
 
     return msg;
@@ -51,53 +50,66 @@ PBFTManager::PBFTManager(HostManager& h, BlockChain& b, MemPool& m) : hosts(h), 
     state = IDLE;
 }
 
-// void PBFTManager::proposeBlock() {
-//     if(state != IDLE || !isProposer()) return;
-//     state = PROPOSING;
-
-//     Logger::logStatus("Block proposal called!");
-
-//     Block block = createBlock();
-//     blockPool.insert(block);
-//     broadcastBlock(hosts, block);
-// };
-
 void PBFTManager::prePrepare(Block& block) {
-    if(blockPool.find(block) != blockPool.end())
+    if(blockPool.find(block.getHash()) != blockPool.end())
         return;
 
-    Logger::logStatus("PrePrepare called! Size of blockpool " + to_string(blockPool.size()));
+    Logger::logStatus("PrePrepare called!");
 
     //TODO: doesn't validate transaction validity yet
-    ExecutionStatus isValid = blockchain.validateBlock(block);
-
-    if(isValid != SUCCESS)
+    if(blockchain.validateBlock(block) != SUCCESS)
         return;
 
-    blockPool.insert(block);
+    blockPool.insert({ block.getHash(), block});
     broadcastBlock(hosts, block);
 
     SignedMessage msg = createPBFTMessage(block.getHash(), user.getPublicKey(), user.getPrivateKey(), PREPARING);
-    preparePool.insert(msg);
-    broadcastMessage(hosts, PREPARING, msg);
+    insertIntoPool(preparePool, msg);
+    broadcastMessage(hosts, msg);
 };
 
 void PBFTManager::prepare(SignedMessage msg) {
+    if(poolHasMessage(preparePool, msg))
+        return;
+
     Logger::logStatus("Prepare called!");
-    // check validity of the prepare message
-    // if valid add message to the prepare pool
-    // broadcast the prepare message
-    // if the prepare pool is bigger than min approvals 
-    // then add data to commit pool and broadcast commit
+
+    bool isValid = checkSignature((const char*)msg.hash.data(), msg.hash.size(), msg.signature, msg.publicKey);
+    if(!isValid)
+        return;
+
+    insertIntoPool(preparePool, msg);
+    broadcastMessage(hosts, msg);
+
+    if(messagePoolSize(preparePool, msg) < MIN_APPROVALS)
+        return;
+
+    SignedMessage commitMsg = createPBFTMessage(msg.hash, user.getPublicKey(), user.getPrivateKey(), COMMITTING);
+    insertIntoPool(commitPool, commitMsg);
+    broadcastMessage(hosts, commitMsg);
 }
 
 void PBFTManager::commit(SignedMessage msg) {
+    if(poolHasMessage(commitPool, msg))
+        return;
+
     Logger::logStatus("Commit called!");
-    // check validity of the commit message
-    // if valid add message to the commitpool
-    // broadcast the commit message
-    // if commit pool is bigger than min approvals
-    // then commit the block to the chain and broadcast round change
+
+    bool isValid = checkSignature((const char*)msg.hash.data(), msg.hash.size(), msg.signature, msg.publicKey);
+    if(!isValid)
+        return;
+
+    insertIntoPool(commitPool, msg);
+    broadcastMessage(hosts, msg);
+
+    if(messagePoolSize(commitPool, msg) >= MIN_APPROVALS) {
+        Block block = blockPool.at(msg.hash);
+        ExecutionStatus status = blockchain.addBlock(block);
+    }
+
+    SignedMessage roundChangeMsg = createPBFTMessage(msg.hash, user.getPublicKey(), user.getPrivateKey(), ROUND_CHANGE);
+    insertIntoPool(commitPool, roundChangeMsg);
+    broadcastMessage(hosts, roundChangeMsg);
 }
 
 // do we need this step?
@@ -109,6 +121,27 @@ void PBFTManager::roundChange(SignedMessage msg) {
     // then clear the transaction queue
 }
 
-// bool PBFTManager::isProposer() {
-//     return hosts.getAddress() == "http://localhost:3000";
-// }
+bool PBFTManager::poolHasMessage(MessagePool& pool, SignedMessage msg) {
+    auto pair = pool.find(msg.hash);
+    if(pair == pool.end())
+        return false;
+    return pair->second.find(msg) != pair->second.end();
+}
+
+void PBFTManager::insertIntoPool(MessagePool& pool, SignedMessage msg) {
+    auto pair = pool.find(msg.hash);
+    if(pair == pool.end()) {
+        unordered_set<SignedMessage, MessageHash> msgSet;
+        msgSet.insert(msg);
+        pool.insert({ msg.hash, msgSet });
+    } else {
+        pair->second.insert(msg);
+    }
+}
+
+size_t PBFTManager::messagePoolSize(MessagePool& pool, SignedMessage msg) {
+    auto pair = pool.find(msg.hash);
+    if(pair == pool.end())
+        return 0;
+    return pair->second.size();
+}

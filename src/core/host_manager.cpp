@@ -58,27 +58,7 @@ string HostManager::computeAddress() {
     } else {
         this->address = this->ip + ":" + to_string(this->port);
     }
-    // convert ip to uint64_t first 16 bits for port, next 32 bits for ipv4
-    this->ipn = 0;
-    if( (signed)this->ip.find("localhost") > -1){
-        this->ipn = 127L << 40;
-	this->ipn |= 1 << 16;
-	this->ipn |= this->port;
-    }
-    else{
-	unsigned long a,b,c,d;
-	sscanf(ip.c_str(),"%lu.%lu.%lu.%lu", &a, &b, &c, &d);
-	this->ipn = a << 40;
-	this->ipn |= b << 32;
-	this->ipn |= c << 24;
-	this->ipn |= d << 16;
-	this->ipn |= this->port;
-    }
     return this->address;
-}
-
-uint64_t HostManager::getIPN(){
-    return this->ipn;
 }
 
 /*
@@ -127,6 +107,7 @@ HostManager::HostManager(json config) {
     this->version = BUILD_VERSION;
     this->networkName = config["networkName"];
     this->computeAddress();
+    this->commID = NULL_SHA256_HASH;
 
     // parse checkpoints
     for(auto checkpoint : config["checkpoints"]) {
@@ -203,6 +184,16 @@ void HostManager::startPingingPeers() {
 
 string HostManager::getAddress() const{
     return this->address;
+}
+
+void HostManager::genCommID(string nonce, string pubkey) {
+    uint64_t epocRandom = 0; // TODO Figure out what the initial value should be
+    string in = std::to_string(epocRandom) + this->ip + std::to_string(this->port) + pubkey + nonce;
+    this->commID = SHA256(in);
+}
+
+SHA256Hash HostManager::getCommID(){
+    return this->commID;
 }
 
 // Only used for tests

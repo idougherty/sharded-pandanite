@@ -16,7 +16,7 @@
 using namespace std;
 
 
-void get_work(PublicWalletAddress wallet, HostManager& hosts, string& customHostIp) {
+void get_work(PublicWalletAddress wallet, string pubkey, HostManager& hosts, string& customHostIp) {
     TransactionAmount allEarnings = 0;
     int failureCount = 0;
     int last_block_id = 0;
@@ -96,6 +96,9 @@ void get_work(PublicWalletAddress wallet, HostManager& hosts, string& customHost
 
             SHA256Hash solution = mineHash(newBlock.getHash(), challengeSize, newBlock.getId() > PUFFERFISH_START_BLOCK);
             newBlock.setNonce(solution);
+
+	    // As of now we have solved the problem
+	    hosts.genCommID(SHA256toString(solution), pubkey); // generate ID
             Logger::logStatus("Submitting block...");
             auto result = sendBlockProposal(host, newBlock);
             if (result.contains("status") && string(result["status"]) == "SUCCESS")  {
@@ -127,16 +130,20 @@ int main(int argc, char **argv) {
     string customIp = config["ip"];
     string customWallet = config["wallet"];
     PublicWalletAddress wallet;
+    string pubkey;
 
     HostManager hosts(config);
     json keys;
+    try{
+	keys = readJsonFromFile("./keys.json");
+    }
+    catch(...){
+	Logger::logStatus("Could not read ./keys.json");
+	return 0;
+    }
+
+    pubkey = keys["publicKey"];
     if (customWallet == "") {
-        try {
-            keys = readJsonFromFile("./keys.json");
-        } catch(...) {
-            Logger::logStatus("Could not read ./keys.json");
-            return 0;
-        }
         wallet = stringToWalletAddress(keys["wallet"]);
         Logger::logStatus("Running miner. Coins stored in : " + string(keys["wallet"]));
     } else {
@@ -145,5 +152,5 @@ int main(int argc, char **argv) {
     }
 
     Logger::logStatus("Starting miner on single thread");
-    get_work(wallet, hosts, customIp);
+    get_work(wallet, pubkey, hosts, customIp);
 }

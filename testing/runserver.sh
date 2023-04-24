@@ -4,7 +4,7 @@
 #	- n: number of servers to start
 cd ..
 ./bin/server --local -ip http://localhost -p 3000 >> ./testing/3kout.txt &
-./bin/miner --local -ip http://localhost -p 3000 >> ./testing/minerout.txt &
+./bin/miner --local >> ./testing/minerout.txt &
 cd testing
 
 # create n servers

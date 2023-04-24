@@ -7,7 +7,7 @@ struct BlockHash {
 public:
 	size_t operator()(const Block b) const 
     {
-		return std::hash<uint32_t>()(b.id);
+		return std::hash<string>()(SHA256toString(b.getHash()));
 	}
 };
 
@@ -21,7 +21,7 @@ class PBFTManager {
         void roundChange(SignedMessage msg);
     private:
         // bool isProposer();
-        Block createBlock();
+        // Block createBlock();
         BlockChain& blockchain;
         HostManager& hosts;
         MemPool& mempool;

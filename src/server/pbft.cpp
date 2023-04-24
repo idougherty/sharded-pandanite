@@ -9,15 +9,29 @@ void broadcastMessage(HostManager& hm, PBFTState type, SignedMessage msg) {
     std::vector<string> hosts = hm.getHosts(false);
     for(string host : hosts) {
         Logger::logStatus("Broadcasting new message to " + host);
-        sendPBFTMessage(host, msg);
+        
+        // sendPBFTMessage(host, msg);
+        // Dispatching thread to prevent blocking
+        std::thread([host, msg]() {
+            sendPBFTMessage(host, msg);
+        }).detach();
     }
 }
 
-void broadcastBlock(HostManager& hm, Block block) {
+void broadcastBlock(HostManager& hm, Block& block) {
     std::vector<string> hosts = hm.getHosts(false);
     for(string host : hosts) {
         Logger::logStatus("Broadcasting new block to " + host);
-        sendBlockProposal(host, block);
+
+        // Dispatching thread to prevent blocking
+        std::thread([host, block]() {
+            try {
+                Block a = block;
+                sendBlockProposal(host, a);
+            } catch(...) {
+                Logger::logStatus("Could not forward new block to " + host);
+            }
+        }).detach();
     }
 }
 
@@ -52,11 +66,10 @@ void PBFTManager::prePrepare(Block& block) {
     if(blockPool.find(block) != blockPool.end())
         return;
 
-    //TODO: is the block actually in the blockpool?
-    Logger::logStatus("PrePrepare called!");
+    Logger::logStatus("PrePrepare called! Size of blockpool " + to_string(blockPool.size()));
 
+    //TODO: doesn't validate transaction validity yet
     ExecutionStatus isValid = blockchain.validateBlock(block);
-    Logger::logStatus("Validity of the block: " + executionStatusAsString(isValid));
 
     if(isValid != SUCCESS)
         return;

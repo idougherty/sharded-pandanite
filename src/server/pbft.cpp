@@ -52,6 +52,7 @@ void PBFTManager::prePrepare(Block& block) {
     if(blockPool.find(block) != blockPool.end())
         return;
 
+    //TODO: is the block actually in the blockpool?
     Logger::logStatus("PrePrepare called!");
 
     ExecutionStatus isValid = blockchain.validateBlock(block);

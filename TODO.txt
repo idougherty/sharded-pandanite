@@ -1,0 +1,58 @@
+Client:
+* mines to determine identity
+* send identity to server
+    * what is included in this identity? address, pk, and solution?
+    * address is just ip:port, this will allow local testing to work and doubles as the url to request from
+    * verifying identity: verifyHash(epochRandomness + address + pubkey, solution, blockchain->getDifficulty(), false, false);
+
+Server:
+* receives identity from miner
+    * if nobody is directory leader
+        * broadcast directory as leader
+    * else
+        * join directory
+
+* receives directory leader broadcast
+    * if already has directory leader
+        * broadcast leader that wins tie break
+    * else
+        * rebroadcast msg
+
+* receives committee consensus (a block with)
+
+PBFT:
+* use identity nonces as a part of message validity checking
+    * creating a valid message right now can be done with any private key public key pair
+    * we need to ensure that the signatures are provided by identities that have solved their PoW problem
+    * this means adding the ip in the signed messages
+    * a message is valid if:
+        * checkSignature(msg.hash, msg.signature, msg.pubkey)
+        * verifyHash(epochRandomness + msg.ip + msg.pubkey, msg.solution, block.difficulty, false, false);
+
+* change to initialize when committee is formed
+    * should broadcast local transaction digest on PBFT finish to directory members
+    * directory members keep track of which committees have finished, and send
+
+* start pbft again when last committee finishes
+    * should broadcast completed block to all the homies
+
+Blockchain structure:
+* consensus blocks:
+    * hash of last consensus block
+    * timestamp
+    * list of committee signatures (committee size is fixed so this is fixed)
+        * used to verify block
+    * number of data blocks
+    * list of data block headers (can grow, how much space do we allocate?)
+* data blocks
+    * cryptographic digest of all transactions
+    * hash of last consensus block
+    * this block's hash (?)
+    * list of committee signatures
+    * fixed list of transactions
+
+Epoch Randomness:
+    * The final committee runs a
+distributed commit-and-xor scheme to generate an exponential biased, but bounded, set of random values. The random
+values are broadcast to the network and used in the PoW in
+the next epoch.

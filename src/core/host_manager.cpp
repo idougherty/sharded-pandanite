@@ -189,6 +189,12 @@ string HostManager::getAddress() const{
 void HostManager::genCommID(string nonce, string pubkey) {
     uint64_t epocRandom = 0; // TODO Figure out what the initial value should be
     string in = std::to_string(epocRandom) + this->ip + std::to_string(this->port) + pubkey + nonce;
+    // this->ip + std::to_string(this->port) can be shortened to this->address
+
+    // elastico says committee id is last s bits of solution
+    // also this is the hash that we need to mine so it would be more like
+    // O = mineHash(in);
+    // id = last s bits of O
     this->commID = SHA256(in);
 }
 

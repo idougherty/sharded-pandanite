@@ -94,17 +94,17 @@ void get_work(PublicWalletAddress wallet, string pubkey, HostManager& hosts, str
             newBlock.setDifficulty(challengeSize);
             newBlock.setLastBlockHash(lastHash);
 
-	    // solve the problem
-	    // get epoch randomness()
-	    int myrand = rand();
-	    vector<int> otherrands; 
-	    hosts.genCommID(pubkey); // generate ID
+            // solve the problem
+            // get epoch randomness()
+            int myrand = rand();
+            vector<int> otherrands; 
+            hosts.genCommID(pubkey); // generate ID
 
             SHA256Hash solution = mineHash(hosts.getCommID(), challengeSize, newBlock.getId() > PUFFERFISH_START_BLOCK); // TODO previously this would mine newBlock.getHash(), however we are now mining against the hostsCommID(), so we may need to change how the hash for the block is generated
             newBlock.setNonce(solution);
-	    auto result1 = sendSolution(host, hosts.getAddress(), solution);
+	        auto result1 = sendSolution(host, hosts.getAddress(), solution);
 
-	    // As of now we have solved the problem
+	        // As of now we have solved the problem
             Logger::logStatus("Submitting block...");
             auto result2 = sendBlockProposal(host, newBlock);
             if (result2.contains("status") && string(result2["status"]) == "SUCCESS")  {

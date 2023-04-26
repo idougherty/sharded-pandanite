@@ -221,7 +221,6 @@ json sendSolution(string host_url, string origin_address, SHA256Hash solutionhas
     vector<uint8_t> bytes(64 + solution.size());
     char* ptr = (char*)bytes.data();
 
-    //FIXME if segfaults, this could be why
     memcpy(ptr, host_url.c_str(), host_url.size());
     memcpy(ptr+64, solution.c_str(), solution.size());
 

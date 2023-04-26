@@ -101,7 +101,7 @@ void get_work(PublicWalletAddress wallet, string pubkey, HostManager& hosts, str
             hosts.genCommID(pubkey); // generate ID
 
             SHA256Hash solution = mineHash(hosts.getCommID(), challengeSize, newBlock.getId() > PUFFERFISH_START_BLOCK); // TODO previously this would mine newBlock.getHash(), however we are now mining against the hostsCommID(), so we may need to change how the hash for the block is generated
-            newBlock.setNonce(solution);
+            // newBlock.setNonce(solution);
 	        auto result1 = sendSolution(host, hosts.getAddress(), solution);
 
 	        // As of now we have solved the problem

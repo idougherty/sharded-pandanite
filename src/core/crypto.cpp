@@ -295,6 +295,7 @@ SHA256Hash mineHash(SHA256Hash target, unsigned char challengeSize, bool usePuff
 void signedMessageToBuffer(SignedMessage msg, char* buffer) {
     char signature[64];
     char publicKey[32];
+    char address[32];
 
     memcpy((void*)signature, (void*)msg.signature.data(), 64);
     memcpy((void*)publicKey, (void*)msg.publicKey.data(), 32);
@@ -303,6 +304,8 @@ void signedMessageToBuffer(SignedMessage msg, char* buffer) {
 
     writeNetworkUint32(buffer, (uint32_t) msg.type);
     writeNetworkSHA256(buffer, msg.hash);
+    writeNetworkSHA256(buffer, msg.solution);
+    writeNetworkNBytes(buffer, msg.address, 64);
     writeNetworkNBytes(buffer, signature, 64);
     writeNetworkNBytes(buffer, publicKey, 32);
 }
@@ -314,6 +317,8 @@ SignedMessage signedMessageFromBuffer(const char* buffer) {
 
     msg.type = static_cast<PBFTState>(readNetworkUint32(buffer));
     msg.hash = readNetworkSHA256(buffer);
+    msg.solution = readNetworkSHA256(buffer);
+    readNetworkNBytes(buffer, msg.address, 64);
     readNetworkNBytes(buffer, signature, 64);
     readNetworkNBytes(buffer, publicKey, 32);
 

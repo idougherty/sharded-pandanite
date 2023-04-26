@@ -51,6 +51,8 @@ struct SignedMessage {
     SHA256Hash hash;
     PublicKey publicKey;
     TransactionSignature signature;
+    char address[64];
+    SHA256Hash solution;
     PBFTState type;
 
     bool operator==(const SignedMessage& other) const {

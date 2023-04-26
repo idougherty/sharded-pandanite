@@ -17,7 +17,10 @@ BlockHeader blockHeaderFromBuffer(const char* buffer) {
     b.numTransactions = readNetworkUint32(buffer);
     b.lastBlockHash = readNetworkSHA256(buffer);
     b.merkleRoot = readNetworkSHA256(buffer);
-    b.nonce = readNetworkSHA256(buffer);
+    for(int i = 0; i < MIN_APPROVALS; i++) {
+        b.signatures[i] = signedMessageFromBuffer(buffer);
+    }
+    // b.nonce = readNetworkSHA256(buffer);
     return b;
 }
 
@@ -28,12 +31,15 @@ void blockHeaderToBuffer(BlockHeader& b, char* buffer) {
     writeNetworkUint32(buffer, b.numTransactions);
     writeNetworkSHA256(buffer, b.lastBlockHash);
     writeNetworkSHA256(buffer, b.merkleRoot);
-    writeNetworkSHA256(buffer, b.nonce);
+    for(int i = 0; i < MIN_APPROVALS; i++) {
+        signedMessageToBuffer(b.signatures[i], buffer);
+    }
+    // writeNetworkSHA256(buffer, b.nonce);
 }
 
 
 Block::Block() {
-    this->nonce = NULL_SHA256_HASH;
+    // this->nonce = NULL_SHA256_HASH;
     this->id = 1;
     this->timestamp = getCurrentTime();
     this->difficulty = MIN_DIFFICULTY;
@@ -42,7 +48,7 @@ Block::Block() {
 }
 
 Block::Block(const Block& b) {
-    this->nonce = b.nonce;
+    // this->nonce = b.nonce;
     this->id = b.id;
     this->difficulty = b.difficulty;
     this->timestamp = b.timestamp;
@@ -55,7 +61,7 @@ Block::Block(const Block& b) {
 }
 
 Block::Block(json block) {
-    this->nonce = stringToSHA256(block["nonce"]);
+    // this->nonce = stringToSHA256(block["nonce"]);
     this->merkleRoot = stringToSHA256(block["merkleRoot"]);
     this->lastBlockHash = stringToSHA256(block["lastBlockHash"]);
     this->id = block["id"];
@@ -71,7 +77,8 @@ Block::Block(const BlockHeader&b, vector<Transaction>& transactions) {
     this->id = b.id;
     this->timestamp = b.timestamp;
     this->difficulty = b.difficulty;
-    this->nonce= b.nonce;
+    // this->nonce= b.nonce;
+    this->signatures = b.signatures;
     this->merkleRoot = b.merkleRoot;
     this->lastBlockHash = b.lastBlockHash;
     for(auto t : transactions) {
@@ -85,7 +92,8 @@ BlockHeader Block::serialize() {
     b.timestamp = this->timestamp;
     b.difficulty = this->difficulty;
     b.numTransactions = this->transactions.size();
-    b.nonce = this->nonce;
+    // b.nonce = this->nonce;
+    b.signatures = this->signatures;
     b.merkleRoot = this->merkleRoot;
     b.lastBlockHash = this->lastBlockHash;
     return b;
@@ -96,7 +104,8 @@ json Block::toJson() {
     result["id"] = this->id;
     result["hash"] = SHA256toString(this->getHash());
     result["difficulty"] = this->difficulty;
-    result["nonce"] = SHA256toString(this->nonce);
+    // result["nonce"] = SHA256toString(this->nonce);
+    result["signatures"] = json::array();
     result["timestamp"] = uint64ToString(this->timestamp);
     result["transactions"] = json::array();
     result["merkleRoot"] = SHA256toString(this->merkleRoot);
@@ -104,6 +113,14 @@ json Block::toJson() {
     
     for(auto t : this->transactions) {
         result["transactions"].push_back(t.toJson());
+    }
+    for(auto s : this->signatures) {
+        json obj;
+        obj["hash"] = s.hash;
+        obj["publicKey"] = s.publicKey;
+        obj["signature"] = s.signature;
+        obj["type"] = s.type;
+        result["signatures"].push_back(s.hash);
     }
     return result;
 }
@@ -130,13 +147,13 @@ void Block::addTransaction(Transaction t) {
     this->transactions.push_back(t);
 }
 
-void Block::setNonce(SHA256Hash s) {
-    this->nonce = s;
-}
+// void Block::setNonce(SHA256Hash s) {
+//     this->nonce = s;
+// }
 
-SHA256Hash Block::getNonce() const{
-    return this->nonce;
-}
+// SHA256Hash Block::getNonce() const{
+//     return this->nonce;
+// }
 
 void Block::setMerkleRoot(SHA256Hash s) {
     this->merkleRoot = s;
@@ -154,10 +171,19 @@ vector<Transaction>& Block::getTransactions(){
     return this->transactions;
 }
 
-bool Block::verifyNonce() {
-    SHA256Hash target = this->getHash();
-    bool usePufferfish = this->getId() > PUFFERFISH_START_BLOCK;
-    return verifyHash(target, this->nonce, this->difficulty, usePufferfish, true);
+// bool Block::verifyNonce() {
+//     SHA256Hash target = this->getHash();
+//     bool usePufferfish = this->getId() > PUFFERFISH_START_BLOCK;
+//     return verifyHash(target, this->nonce, this->difficulty, usePufferfish, true);
+// }
+bool Block::verifySignatures() {
+    for(SignedMessage s : this->signatures) {
+        string targetStr = SHA256toString(this->getHash()) + s.address + publicKeyToString(s.publicKey);
+        SHA256Hash target = SHA256(targetStr);
+        if(!verifyHash(target, s.solution, this->difficulty, false, true));
+            false;
+    }
+    return true;
 }
 
 void Block::setDifficulty(uint8_t d) {
@@ -190,7 +216,7 @@ SHA256Hash Block::getHash() const{
 
 bool operator==(const Block& a, const Block& b) {
     if(b.id != a.id) return false;
-    if(b.nonce != a.nonce) return false;
+    // if(b.nonce != a.nonce) return false;)
     if(b.timestamp != a.timestamp) return false;
     if(b.lastBlockHash != a.lastBlockHash) return false;
     if(b.difficulty != a.difficulty) return false;
@@ -201,6 +227,12 @@ bool operator==(const Block& a, const Block& b) {
         if(a.transactions[i] == b.transactions[i]) {
             continue;
         } else {
+            return false;
+        }
+    }
+
+    for(int i = 0; i < MIN_APPROVALS; i++) {
+        if(a.signatures[i].signature != b.signatures[i].signature) {
             return false;
         }
     }

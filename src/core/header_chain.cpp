@@ -117,7 +117,7 @@ void HeaderChain::load() {
                         break;
                     } 
                 }
-                if (!block.verifyNonce()) {
+                if (!block.verifySignatures()) {
                     failure = true;
                     break;
                 };

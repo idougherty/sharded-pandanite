@@ -454,7 +454,7 @@ ExecutionStatus BlockChain::validateBlock(Block &block) {
     if (block.getTransactions().size() > MAX_TRANSACTIONS_PER_BLOCK) return INVALID_TRANSACTION_COUNT;
     if (block.getId() != this->numBlocks + 1) return INVALID_BLOCK_ID;
     if (block.getDifficulty() != this->difficulty) return INVALID_DIFFICULTY;
-    if (!block.verifyNonce()) return INVALID_NONCE;
+    if (!block.verifySignatures()) return INVALID_NONCE;
     if (block.getLastBlockHash() != this->getLastHash()) return INVALID_LASTBLOCK_HASH;
     if (block.getId() != 1) {
         // block must be less than 2 hrs into future from network time
@@ -498,7 +498,7 @@ ExecutionStatus BlockChain::addBlock(Block& block) {
     if (block.getTransactions().size() > MAX_TRANSACTIONS_PER_BLOCK) return INVALID_TRANSACTION_COUNT;
     if (block.getId() != this->numBlocks + 1) return INVALID_BLOCK_ID;
     if (block.getDifficulty() != this->difficulty) return INVALID_DIFFICULTY;
-    if (!block.verifyNonce()) return INVALID_NONCE;
+    if (!block.verifySignatures()) return INVALID_NONCE;
     if (block.getLastBlockHash() != this->getLastHash()) return INVALID_LASTBLOCK_HASH;
     if (block.getId() != 1) {
         // block must be less than 2 hrs into future from network time

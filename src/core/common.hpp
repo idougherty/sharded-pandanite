@@ -27,7 +27,7 @@ typedef std::array<uint8_t, 20> RIPEMD160Hash;
 
 #define COMMITTEE_SIZE 4 // TODO increase for real system
 #define IDENTITIES 64
-#define SBIT = 4
+#define SBIT 4
 #define NULL_SHA256_HASH SHA256Hash({0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0})
 #define NULL_KEY SHA256Hash({0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0})
 #define NULL_ADDRESS PublicWalletAddress({0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0})

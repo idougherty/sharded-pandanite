@@ -963,7 +963,7 @@ void PandaniteServer::run(json config) {
                         res->end(response.dump());
                     } else {
 		    	cout << "DEBUG: was correct size" << endl;
-                        json response = manager.handleSolutionMessage(buffer.substr(0, 64), buffer.substr(65, buffer.size() - 64));
+                        json response = manager.handleSolutionMessage(buffer.substr(0, 64), buffer.substr(64, buffer.size() - 64));
                         res->end(response.dump());
                     }
                 } catch(const std::exception &e) {

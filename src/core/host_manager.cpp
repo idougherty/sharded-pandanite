@@ -183,7 +183,23 @@ void HostManager::startPingingPeers() {
 }
 
 void HostManager::addPeerSolution(string address, string solution){
-    this->peers_solutions[address] = solution;
+    if(this->peers_solutions.find(solution) == this->peers_solutions.end()){
+	// not found, broadcast
+	std::vector<string> hosts = this->getHosts(false);
+	for(string host : hosts){
+	    Logger::logStatus("Broadcasting new message to " + host);
+	    std::thread([host, address, solution](){
+		sendSolution(host, address, stringToSHA256(solution));
+	    }).detach();
+	}
+        this->peers_solutions[solution] = address;
+    }
+    else{
+	// found
+	// compare the current solution to other solutions keep the smallest one
+	// broadcast the smallest one if it was not already in our map
+	// otherwise keep quite
+    }
 }
 
 string HostManager::getAddress() const{

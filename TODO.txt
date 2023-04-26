@@ -38,7 +38,7 @@ PBFT:
 
 Blockchain structure:
 * consensus blocks:
-    * hash of last consensus block
+    * hash of last consensus blocksolution
     * timestamp
     * list of committee signatures (committee size is fixed so this is fixed)
         * used to verify block
@@ -52,7 +52,6 @@ Blockchain structure:
     * fixed list of transactions
 
 Epoch Randomness:
-    * The final committee runs a
-distributed commit-and-xor scheme to generate an exponential biased, but bounded, set of random values. The random
-values are broadcast to the network and used in the PoW in
-the next epoch.
+    * The final committee runs a distributed commit-and-xor scheme to generate an exponential biased, 
+    but bounded, set of random values. The random values are broadcast to the network and used in the 
+    PoW in the next epoch.

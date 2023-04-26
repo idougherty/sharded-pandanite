@@ -5,8 +5,6 @@
 #include "../core/crypto.hpp"
 using namespace std;
 
-#define MIN_APPROVALS 2
-
 struct MapHash {
 public:
 	size_t operator()(const SHA256Hash h) const 
@@ -24,6 +22,12 @@ class PBFTManager {
         void prepare(SignedMessage msg);
         void commit(SignedMessage msg);
         void roundChange(SignedMessage msg);
+
+        void proposeFinal(vector<Block> blocks, vector<array<SignedMessage, MIN_APPROVALS>> signatures);
+        void prepareFinal(SignedMessage msg);
+        void commitFinal(SignedMessage msg);
+        void roundChangeFinal(SignedMessage msg);
+
     private:
         bool poolHasMessage(MessagePool& pool, SignedMessage msg);
         void insertIntoPool(MessagePool& pool, SignedMessage msg);
@@ -32,8 +36,16 @@ class PBFTManager {
         HostManager& hosts;
         MemPool& mempool;
         User user;
+
         unordered_map<SHA256Hash, Block, MapHash> blockPool;
         MessagePool preparePool;
         MessagePool commitPool;
-        PBFTState state;
+        MessagePool roundChangePool;
+
+        string random;
+        SHA256Hash digest;
+        unordered_set<SHA256Hash, MapHash> randPool;
+        MessagePool preparePoolFinal;
+        MessagePool commitPoolFinal;
+        MessagePool roundChangePoolFinal;
 };

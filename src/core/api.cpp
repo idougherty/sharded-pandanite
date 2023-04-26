@@ -5,6 +5,7 @@
 #include "../external/http.hpp"
 #include "constants.hpp"
 #include "helpers.hpp"
+#include "logger.hpp"
 using namespace std;
 
 uint32_t getCurrentBlockCount(string host_url) {
@@ -200,7 +201,6 @@ json sendBlockProposal(string host_url, Block& block) {
 }
 
 json sendPBFTMessage(string host_url, SignedMessage message) {
-    
     // TODO: move buffer building out for broadcasts for efficiency
     vector<uint8_t> bytes(sizeof(SignedMessage));
     char* ptr = (char*) bytes.data();
@@ -208,6 +208,70 @@ json sendPBFTMessage(string host_url, SignedMessage message) {
     signedMessageToBuffer(message, ptr);
     
     http::Request request(host_url + "/pbft_message");
+    const auto response = request.send("POST", bytes, {
+        "Content-Type: application/octet-stream"
+    }, std::chrono::milliseconds{TIMEOUT_SUBMIT_MS});
+    string responseStr = std::string{response.body.begin(), response.body.end()};
+    return json::parse(responseStr);
+}
+
+json sendSignedBlock(string host_url, Block block, SignedMessage signatures[]) {
+    BlockHeader b = block.serialize();
+    vector<uint8_t> bytes(BLOCKHEADER_BUFFER_SIZE + TRANSACTIONINFO_BUFFER_SIZE * b.numTransactions + sizeof(SignedMessage) * MIN_APPROVALS);
+    char* ptr = (char*) bytes.data();
+
+    blockHeaderToBuffer(b, ptr);
+    ptr += BLOCKHEADER_BUFFER_SIZE;
+
+    for(auto t : block.getTransactions()) {
+        TransactionInfo tx = t.serialize();
+        transactionInfoToBuffer(tx, ptr);
+        ptr += TRANSACTIONINFO_BUFFER_SIZE;
+    }
+
+    for(int i = 0; i < MIN_APPROVALS; i++) {
+        signedMessageToBuffer(signatures[i], ptr);
+        ptr += sizeof(SignedMessage);
+    }
+
+    http::Request request(host_url + "/submit_signed_block");
+    const auto response = request.send("POST", bytes, {
+        "Content-Type: application/octet-stream"
+    }, std::chrono::milliseconds{TIMEOUT_SUBMIT_MS});
+    string responseStr = std::string{response.body.begin(), response.body.end()};
+    return json::parse(responseStr);
+}
+
+json sendSignedBlocks(string host_url, vector<Block> blocks, vector<array<SignedMessage, MIN_APPROVALS>> signatures) {
+    size_t blockSizes = sizeof(uint32_t);
+    BlockHeader headers[blocks.size()];
+
+    for(int i = 0; i < blocks.size(); i++) {
+        headers[i] = blocks[i].serialize();
+        blockSizes += BLOCKHEADER_BUFFER_SIZE + TRANSACTIONINFO_BUFFER_SIZE * headers[i].numTransactions;
+    }
+
+    vector<uint8_t> bytes(blockSizes + signatures.size() * sizeof(SignedMessage) * MIN_APPROVALS);
+    char* ptr = (char*) bytes.data();
+    writeNetworkUint32(ptr, blocks.size());
+    
+    for(int i = 0; i < blocks.size(); i++) {
+        blockHeaderToBuffer(headers[i], ptr);
+        ptr += BLOCKHEADER_BUFFER_SIZE;
+
+        for(auto t : blocks.at(i).getTransactions()) {
+            TransactionInfo tx = t.serialize();
+            transactionInfoToBuffer(tx, ptr);
+            ptr += TRANSACTIONINFO_BUFFER_SIZE;
+        }
+
+        for(int j = 0; j < MIN_APPROVALS; j++) {
+            signedMessageToBuffer(signatures.at(i)[j], ptr);
+            ptr += sizeof(SignedMessage);
+        }
+    }
+
+    http::Request request(host_url + "/submit_signed_blocks");
     const auto response = request.send("POST", bytes, {
         "Content-Type: application/octet-stream"
     }, std::chrono::milliseconds{TIMEOUT_SUBMIT_MS});

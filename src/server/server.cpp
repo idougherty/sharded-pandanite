@@ -943,6 +943,155 @@ void PandaniteServer::run(json config) {
         });
     };
 
+    auto signedBlockHandler = [&manager](auto *res, auto *req) {
+        rateLimit(manager, res);
+        sendCorsHeaders(res);
+        res->onAborted([res]() {
+            res->end("ABORTED");
+        });
+        std::string buffer;
+        res->onData([res, buffer = std::move(buffer), &manager](std::string_view data, bool last) mutable {
+            buffer.append(data.data(), data.length());
+            checkBuffer(buffer, res);
+            if (last) {
+                try {
+                    if (buffer.length() < BLOCKHEADER_BUFFER_SIZE + TRANSACTIONINFO_BUFFER_SIZE) {
+                        json response;
+                        response["error"] = "Malformed block";
+                        Logger::logError("/submit_signed_block","Malformed block");
+                        res->end(response.dump());
+                        return;
+                    }
+
+                    char* ptr = (char*)buffer.c_str();
+                    BlockHeader blockH = blockHeaderFromBuffer(ptr);
+                    ptr += BLOCKHEADER_BUFFER_SIZE;
+                    if (buffer.size() != BLOCKHEADER_BUFFER_SIZE + blockH.numTransactions*TRANSACTIONINFO_BUFFER_SIZE + sizeof(SignedMessage) * MIN_APPROVALS) {
+                        json response;
+                        response["error"] = "Malformed block";
+                        Logger::logError("/submit_signed_block","Malformed block");
+                        res->end(response.dump());
+                        return;
+                    }
+
+                    vector<Transaction> transactions;
+                    if (blockH.numTransactions > MAX_TRANSACTIONS_PER_BLOCK) {
+                        json response;
+                        response["error"] = "Too many transactions";
+                        res->end(response.dump());
+                        Logger::logError("/submit_signed_block","Too many transactions");
+                    }
+                    for(int j = 0; j < blockH.numTransactions; j++) {
+                        TransactionInfo t = transactionInfoFromBuffer(ptr);
+                        ptr += TRANSACTIONINFO_BUFFER_SIZE;
+                        Transaction tx(t);
+                        transactions.push_back(tx);
+                    }
+                    Block block(blockH, transactions);
+                    SignedMessage messages[MIN_APPROVALS];
+
+                    Logger::logStatus("BLOCK: "+SHA256toString(block.getHash()));
+                    for(int i = 0; i < MIN_APPROVALS; i++) {
+                        messages[i] = signedMessageFromBuffer(ptr);
+                        ptr += sizeof(SignedMessage);
+                        Logger::logStatus("Signature: "+SHA256toString(messages[i].hash));
+                    }
+                    
+                } catch(const std::exception &e) {
+                    json response;
+                    response["error"] = string(e.what());
+                    res->end(response.dump());
+                    Logger::logError("/submit_signed_block", e.what());
+                } catch(...) {
+                    json response;
+                    response["error"] = "unknown";
+                    res->end(response.dump());
+                    Logger::logError("/submit_signed_block", "unknown");
+                }
+                
+            }
+        });
+    };
+
+    auto signedBlocksHandler = [&manager](auto *res, auto *req) {
+        rateLimit(manager, res);
+        sendCorsHeaders(res);
+        res->onAborted([res]() {
+            res->end("ABORTED");
+        });
+        std::string buffer;
+        res->onData([res, buffer = std::move(buffer), &manager](std::string_view data, bool last) mutable {
+            buffer.append(data.data(), data.length());
+            checkBuffer(buffer, res);
+            if (last) {
+                try {
+                    if (buffer.length() < sizeof(uint32_t)) {
+                        json response;
+                        response["error"] = "Malformed block";
+                        Logger::logError("/submit_signed_blocks","Malformed block");
+                        res->end(response.dump());
+                        return;
+                    }
+
+                    char* ptr = (char*)buffer.c_str();
+                    int size = readNetworkUint32((const char*&) ptr);
+                    vector<Block> blocks;
+                    vector<array<SignedMessage, MIN_APPROVALS>> messages;
+
+                    for(int i = 0; i < size; i++) {
+                        BlockHeader blockH = blockHeaderFromBuffer(ptr);
+                        ptr += BLOCKHEADER_BUFFER_SIZE;
+                        if (buffer.size() < BLOCKHEADER_BUFFER_SIZE + blockH.numTransactions*TRANSACTIONINFO_BUFFER_SIZE + sizeof(SignedMessage) * MIN_APPROVALS) {
+                            json response;
+                            response["error"] = "Malformed block";
+                            Logger::logError("/submit_signed_blocks","Malformed block");
+                            res->end(response.dump());
+                            return;
+                        }
+
+                        vector<Transaction> transactions;
+                        if (blockH.numTransactions > MAX_TRANSACTIONS_PER_BLOCK) {
+                            json response;
+                            response["error"] = "Too many transactions";
+                            res->end(response.dump());
+                            Logger::logError("/submit_signed_blocks","Too many transactions");
+                        }
+                        for(int j = 0; j < blockH.numTransactions; j++) {
+                            TransactionInfo t = transactionInfoFromBuffer(ptr);
+                            ptr += TRANSACTIONINFO_BUFFER_SIZE;
+                            Transaction tx(t);
+                            transactions.push_back(tx);
+                        }
+                        blocks.push_back(Block(blockH, transactions));
+                        array<SignedMessage, MIN_APPROVALS> msgSet;
+
+                        Logger::logStatus("BLOCK: "+SHA256toString(blocks[i].getHash()));
+                        for(int j = 0; j < MIN_APPROVALS; j++) {
+                            msgSet[j] = signedMessageFromBuffer(ptr);
+                            ptr += sizeof(SignedMessage);
+                            Logger::logStatus("Signature: "+SHA256toString(msgSet[j].hash));
+                        }
+
+                        messages.push_back(msgSet);
+                    }
+                    json ret;
+                    ret["status"] = executionStatusAsString(SUCCESS);
+                    res->end(ret.dump());
+                } catch(const std::exception &e) {
+                    json response;
+                    response["error"] = string(e.what());
+                    res->end(response.dump());
+                    Logger::logError("/submit_signed_blocks", e.what());
+                } catch(...) {
+                    json response;
+                    response["error"] = "unknown";
+                    res->end(response.dump());
+                    Logger::logError("/submit_signed_blocks", "unknown");
+                }
+                
+            }
+        });
+    };
  
     uWS::App()
         .get("/", mainHandler)
@@ -970,6 +1119,8 @@ void PandaniteServer::run(json config) {
         .post("/submit", submitHandler)
         .post("/pbft_propose_block", proposalHandler)
         .post("/pbft_message", pbftMessageHandler)
+        .post("/submit_signed_block", signedBlockHandler)
+        .post("/submit_signed_blocks", signedBlocksHandler)
         .get("/gettx", getTxHandler)
         .get("/sync", syncHandler)
         .get("/block_headers", blockHeaderHandler)
@@ -996,6 +1147,8 @@ void PandaniteServer::run(json config) {
         .options("/submit", corsHandler)
         .options("/pbft_propose_block", corsHandler)
         .options("/pbft_message", corsHandler)
+        .options("/submit_signed_block", corsHandler)
+        .options("/submit_signed_blocks", corsHandler)
         .options("/gettx", corsHandler)
         .options("/gettx", corsHandler)
         .options("/sync", corsHandler)

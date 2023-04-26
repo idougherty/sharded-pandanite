@@ -36,12 +36,15 @@ SHA256Hash mineHash(SHA256Hash target, unsigned char challengeSize, bool usePuff
 bool verifyHash(SHA256Hash& target, SHA256Hash& nonce, unsigned char challengeSize, bool usePufferfish = false, bool useCache = false);
 
 enum PBFTState {
-    IDLE,
     PROPOSING,
     PREPREPARING,
     PREPARING,
     COMMITTING,
     ROUND_CHANGE,
+    PREPREPARING_F,
+    PREPARING_F,
+    COMMITTING_F,
+    ROUND_CHANGE_F,
 };
 
 struct SignedMessage {

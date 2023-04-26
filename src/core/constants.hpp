@@ -28,3 +28,6 @@
 #define MIN_DIFFICULTY 6
 #define MAX_DIFFICULTY 255
 
+// PBFT
+#define MIN_APPROVALS 2
+

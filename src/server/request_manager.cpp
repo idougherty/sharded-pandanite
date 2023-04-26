@@ -341,6 +341,15 @@ json RequestManager::handlePBFTMessage(SignedMessage message) {
         case ROUND_CHANGE:
             this->pbftManager->roundChange(message);
             break;
+        case PREPARING_F:
+            this->pbftManager->prepareFinal(message);
+            break;
+        case COMMITTING_F:
+            this->pbftManager->commitFinal(message);
+            break;
+        case ROUND_CHANGE_F:
+            this->pbftManager->roundChangeFinal(message);
+            break;
         default:
             Logger::logStatus("PBFT MESSAGE HAS THE WRONG TYPE!");
     }

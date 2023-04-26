@@ -214,3 +214,21 @@ json sendPBFTMessage(string host_url, SignedMessage message) {
     string responseStr = std::string{response.body.begin(), response.body.end()};
     return json::parse(responseStr);
 }
+
+json sendSolution(string host_url, string origin_address, SHA256Hash solutionhash){
+    string solution = SHA256toString(solutionhash);
+
+    vector<uint8_t> bytes(64 + solution.size());
+    char* ptr = (char*)bytes.data();
+
+    //FIXME if segfaults, this could be why
+    memcpy(ptr, host_url.c_str(), host_url.size());
+    memcpy(ptr+64, solution.c_str(), solution.size());
+
+    http::Request request(host_url + "/solution_message");
+    const auto response = request.send("POST", bytes, {
+        "Content-Type: application/octet-stream"
+    }, std::chrono::milliseconds{TIMEOUT_SUBMIT_MS});
+    string responseStr = std::string{response.body.begin(), response.body.end()};
+    return json::parse(responseStr);
+}

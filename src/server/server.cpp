@@ -943,6 +943,46 @@ void PandaniteServer::run(json config) {
         });
     };
 
+    auto solutionMessageHandler = [&manager](auto *res, auto *req){
+	rateLimit(manager, res);
+	sendCorsHeaders(res);
+	res->onAborted([res](){
+	    res->end("ABORTED");
+	});
+	std::string buffer;
+	res->onData([res, buffer = std::move(buffer), &manager](std::string_view data, bool last) mutable {
+            cout << "DEBUG: request manager received a solution" << endl;
+	    buffer.append(data.data(), data.length());
+            checkBuffer(buffer, res);
+            if (last) {
+                try {
+                    if (buffer.length() < 64 + sizeof(SHA256Hash)) {
+                        json response;
+                        response["error"] = "Malformed message";
+                        Logger::logError("/solution_message","Malformed block");
+                        res->end(response.dump());
+                    } else {
+		    	cout << "DEBUG: was correct size" << endl;
+                        json response = manager.handleSolutionMessage(buffer.substr(0, 64), buffer.substr(65, buffer.size() - 64));
+                        res->end(response.dump());
+                    }
+                } catch(const std::exception &e) {
+                    json response;
+                    response["error"] = string(e.what());
+                    res->end(response.dump());
+                    Logger::logError("/solution_message", e.what());
+                } catch(...) {
+                    json response;
+                    response["error"] = "unknown";
+                    res->end(response.dump());
+                    Logger::logError("/solution_message", "unknown");
+                }
+                
+            }
+        });
+
+    };
+
  
     uWS::App()
         .get("/", mainHandler)
@@ -970,6 +1010,7 @@ void PandaniteServer::run(json config) {
         .post("/submit", submitHandler)
         .post("/pbft_propose_block", proposalHandler)
         .post("/pbft_message", pbftMessageHandler)
+	.post("/solution_message", solutionMessageHandler)
         .get("/gettx", getTxHandler)
         .get("/sync", syncHandler)
         .get("/block_headers", blockHeaderHandler)
@@ -996,6 +1037,7 @@ void PandaniteServer::run(json config) {
         .options("/submit", corsHandler)
         .options("/pbft_propose_block", corsHandler)
         .options("/pbft_message", corsHandler)
+	.options("/solution_message", corsHandler)
         .options("/gettx", corsHandler)
         .options("/gettx", corsHandler)
         .options("/sync", corsHandler)

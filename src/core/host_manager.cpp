@@ -182,13 +182,17 @@ void HostManager::startPingingPeers() {
     this->syncThread.push_back(std::thread(peer_sync, ref(*this)));
 }
 
+void HostManager::addPeerSolution(string address, string solution){
+    this->peers_solutions[address] = solution;
+}
+
 string HostManager::getAddress() const{
     return this->address;
 }
 
-void HostManager::genCommID(string nonce, string pubkey) {
+void HostManager::genCommID(string pubkey) {
     uint64_t epocRandom = 0; // TODO Figure out what the initial value should be
-    string in = std::to_string(epocRandom) + this->ip + std::to_string(this->port) + pubkey + nonce;
+    string in = std::to_string(epocRandom) + this->address + pubkey;
     // this->ip + std::to_string(this->port) can be shortened to this->address
 
     // elastico says committee id is last s bits of solution

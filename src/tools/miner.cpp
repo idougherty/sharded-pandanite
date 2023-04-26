@@ -94,18 +94,24 @@ void get_work(PublicWalletAddress wallet, string pubkey, HostManager& hosts, str
             newBlock.setDifficulty(challengeSize);
             newBlock.setLastBlockHash(lastHash);
 
-            SHA256Hash solution = mineHash(newBlock.getHash(), challengeSize, newBlock.getId() > PUFFERFISH_START_BLOCK);
+	    // solve the problem
+	    // get epoch randomness()
+	    int myrand = rand();
+	    vector<int> otherrands; 
+	    hosts.genCommID(pubkey); // generate ID
+
+            SHA256Hash solution = mineHash(hosts.getCommID(), challengeSize, newBlock.getId() > PUFFERFISH_START_BLOCK); // TODO previously this would mine newBlock.getHash(), however we are now mining against the hostsCommID(), so we may need to change how the hash for the block is generated
             newBlock.setNonce(solution);
+	    auto result1 = sendSolution(host, hosts.getAddress(), solution);
 
 	    // As of now we have solved the problem
-	    hosts.genCommID(SHA256toString(solution), pubkey); // generate ID
             Logger::logStatus("Submitting block...");
-            auto result = sendBlockProposal(host, newBlock);
-            if (result.contains("status") && string(result["status"]) == "SUCCESS")  {
+            auto result2 = sendBlockProposal(host, newBlock);
+            if (result2.contains("status") && string(result2["status"]) == "SUCCESS")  {
                 Logger::logStatus(GREEN + "[ ACCEPTED ] " + RESET );
             } else {
                 Logger::logStatus(RED + "[ REJECTED ] " + RESET);
-                Logger::logStatus(result.dump(4));
+                Logger::logStatus(result2.dump(4));
             }          
 
             // WHILE TESTING ONLY SUBMIT ONE BLOCK

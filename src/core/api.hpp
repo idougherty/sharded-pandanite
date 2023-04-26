@@ -21,3 +21,4 @@ void readRawHeaders(string host_url, int startId, int endId, vector<BlockHeader>
 
 json sendBlockProposal(string host_url, Block& block);
 json sendPBFTMessage(string host_url, SignedMessage message);
+json sendSolution(string host_url, string origin_address, SHA256Hash solutionhash);

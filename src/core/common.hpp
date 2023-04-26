@@ -25,7 +25,9 @@ typedef map<PublicWalletAddress,TransactionAmount> LedgerState;
 typedef std::array<uint8_t, 32> SHA256Hash;
 typedef std::array<uint8_t, 20> RIPEMD160Hash;
 
-#define COMITTE_SIZE 3 // TODO increase for real system
+#define COMMITTEE_SIZE 4 // TODO increase for real system
+#define IDENTITIES 64
+#define SBIT = 4
 #define NULL_SHA256_HASH SHA256Hash({0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0})
 #define NULL_KEY SHA256Hash({0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0})
 #define NULL_ADDRESS PublicWalletAddress({0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0})

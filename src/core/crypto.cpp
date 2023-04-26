@@ -299,7 +299,7 @@ void signedMessageToBuffer(SignedMessage msg, char* buffer) {
     memcpy((void*)signature, (void*)msg.signature.data(), 64);
     memcpy((void*)publicKey, (void*)msg.publicKey.data(), 32);
     
-    const char* ptr = buffer;
+    const char* ptr = buffer; // TODO might be useless line of code
 
     writeNetworkUint32(buffer, (uint32_t) msg.type);
     writeNetworkSHA256(buffer, msg.hash);

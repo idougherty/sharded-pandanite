@@ -17,6 +17,7 @@ class HostManager {
         string computeAddress();
         void refreshHostList();
         void startPingingPeers();
+	void addPeerSolution(string address, string solution);
 
         string getGoodHost() const;
         uint64_t getBlockCount() const;
@@ -34,7 +35,7 @@ class HostManager {
         void addPeer(string addr, uint64_t time, string version, string network);
         bool isDisabled();
         void syncHeadersWithPeers();
-	void genCommID(string nounce, string pubkey);
+	void genCommID(string pubkey);
 	SHA256Hash getCommID();
 
     protected:
@@ -57,6 +58,7 @@ class HostManager {
         map<string,int32_t> peerClockDeltas;
         map<uint64_t, SHA256Hash> checkpoints;
         map<uint64_t, SHA256Hash> bannedHashes;
+	map<string, string> peers_solutions;
         vector<string> hostSources;
         vector<string> hosts;
         set<string> blacklist;

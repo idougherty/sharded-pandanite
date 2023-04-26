@@ -23,3 +23,4 @@ json sendBlockProposal(string host_url, Block& block);
 json sendPBFTMessage(string host_url, SignedMessage message);
 json sendSignedBlock(string host_url, Block block, SignedMessage signatures[]);
 json sendSignedBlocks(string host_url, vector<Block> blocks, vector<array<SignedMessage, MIN_APPROVALS>> signatures);
+json sendSolution(string host_url, string origin_address, SHA256Hash solutionhash);

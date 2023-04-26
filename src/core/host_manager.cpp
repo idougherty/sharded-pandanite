@@ -182,13 +182,34 @@ void HostManager::startPingingPeers() {
     this->syncThread.push_back(std::thread(peer_sync, ref(*this)));
 }
 
+void HostManager::addPeerSolution(string address, string solution){
+    if(this->peers_solutions.find(solution.substr(0, SBIT))== this->peers_solutions.end()){
+	// not found, broadcast
+	std::vector<string> hosts = this->getHosts(false);
+	for(string host : hosts){
+	    Logger::logStatus("Broadcasting new message to " + host);
+	    std::thread([host, address, solution](){
+		sendSolution(host, address, stringToSHA256(solution));
+	    }).detach();
+	}
+        this->peers_solutions[solution.substr(0, SBIT)] = address;
+    }
+    else{
+	cout << "DEBUG: already have " << solution << endl;
+	// found
+	// compare the current solution to other solutions keep the smallest one
+	// broadcast the smallest one if it was not already in our map
+	// otherwise keep quite
+    }
+}
+
 string HostManager::getAddress() const{
     return this->address;
 }
 
-void HostManager::genCommID(string nonce, string pubkey) {
+void HostManager::genCommID(string pubkey) {
     uint64_t epocRandom = 0; // TODO Figure out what the initial value should be
-    string in = std::to_string(epocRandom) + this->ip + std::to_string(this->port) + pubkey + nonce;
+    string in = std::to_string(epocRandom) + this->address + pubkey;
     // this->ip + std::to_string(this->port) can be shortened to this->address
 
     // elastico says committee id is last s bits of solution

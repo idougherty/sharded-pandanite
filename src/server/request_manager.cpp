@@ -358,3 +358,10 @@ json RequestManager::handlePBFTMessage(SignedMessage message) {
     ret["status"] = executionStatusAsString(SUCCESS);
     return ret;
 }
+
+json RequestManager::handleSolutionMessage(string address, string solution){
+    this->hosts.addPeerSolution(address, solution);
+    json ret;
+    ret["status"] = executionStatusAsString(SUCCESS);
+    return ret;
+}

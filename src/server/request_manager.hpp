@@ -36,6 +36,7 @@ class RequestManager {
         json addPeer(string address, uint64_t time, string version, string network);
         json proposeBlock(Block& b);
         json handlePBFTMessage(SignedMessage b);
+        json handleSolutionMessage(string solution, string hash);
         BlockHeader getBlockHeader(uint32_t blockId);
         std::pair<uint8_t*, size_t> getRawBlockData(uint32_t blockId);
         std::pair<char*, size_t> getRawTransactionData();

@@ -8,3 +8,5 @@
 ./runserver.sh $1
 sleep 1
 ./peers.sh $1 $2 $3
+
+

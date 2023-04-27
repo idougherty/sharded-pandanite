@@ -76,7 +76,7 @@ void peer_sync(HostManager& hm) {
                 Logger::logStatus(e.what());
             }
         }
-        std::this_thread::sleep_for(std::chrono::minutes(1));
+        std::this_thread::sleep_for(std::chrono::seconds(30));
     }
 }
 

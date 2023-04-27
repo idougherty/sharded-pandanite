@@ -321,6 +321,7 @@ void BlockChain::setMemPool(std::shared_ptr<MemPool> memPool) {
 }
 
 uint8_t BlockChain::getDifficulty() const{
+    // return 27;
     return this->difficulty;
 }
 

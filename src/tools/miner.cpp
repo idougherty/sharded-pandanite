@@ -97,8 +97,8 @@ void get_work(PublicWalletAddress wallet, string pubkey, HostManager& hosts, str
             SHA256Hash solution = mineHash(newBlock.getHash(), challengeSize, newBlock.getId() > PUFFERFISH_START_BLOCK);
             newBlock.setNonce(solution);
 
-	    // As of now we have solved the problem
-	    hosts.genCommID(SHA256toString(solution), pubkey); // generate ID
+            // As of now we have solved the problem
+            // hosts.genCommID(SHA256toString(solution), pubkey); // generate ID
             Logger::logStatus("Submitting block...");
             auto result = sendBlockProposal(host, newBlock);
             if (result.contains("status") && string(result["status"]) == "SUCCESS")  {
@@ -107,11 +107,6 @@ void get_work(PublicWalletAddress wallet, string pubkey, HostManager& hosts, str
                 Logger::logStatus(RED + "[ REJECTED ] " + RESET);
                 Logger::logStatus(result.dump(4));
             }          
-
-            // WHILE TESTING ONLY SUBMIT ONE BLOCK
-            // in the future we need a mechanism to only start 
-            // mining once the last proposal is processed completely
-            return;
 
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 

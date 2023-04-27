@@ -8,7 +8,7 @@
 void broadcastMessage(HostManager& hm, SignedMessage msg) {
     std::vector<string> hosts = hm.getHosts(false);
     for(string host : hosts) {
-        Logger::logStatus("Broadcasting new message to " + host);
+        // Logger::logStatus("Broadcasting new message to " + host);
         
         // Dispatching thread to prevent blocking
         std::thread([host, msg]() {
@@ -20,7 +20,7 @@ void broadcastMessage(HostManager& hm, SignedMessage msg) {
 void broadcastBlock(HostManager& hm, Block& block) {
     std::vector<string> hosts = hm.getHosts(false);
     for(string host : hosts) {
-        Logger::logStatus("Broadcasting new block to " + host);
+        // Logger::logStatus("Broadcasting new block to " + host);
 
         // Dispatching thread to prevent blocking
         std::thread([host, block]() {
@@ -54,7 +54,9 @@ void PBFTManager::prePrepare(Block& block) {
     if(blockPool.find(block.getHash()) != blockPool.end())
         return;
 
-    Logger::logStatus("PrePrepare called!");
+    Logger::logStatus("PBFT INITIATED (" + to_string(block.getId()) + ") " + to_string(1000*time(0)));
+
+    // Logger::logStatus("PrePrepare called!");
 
     //TODO: doesn't validate transaction validity yet
     if(blockchain.validateBlock(block) != SUCCESS)
@@ -72,7 +74,7 @@ void PBFTManager::prepare(SignedMessage msg) {
     if(poolHasMessage(preparePool, msg))
         return;
 
-    Logger::logStatus("Prepare called!");
+    // Logger::logStatus("Prepare called!");
 
     bool isValid = checkSignature((const char*)msg.hash.data(), msg.hash.size(), msg.signature, msg.publicKey);
     if(!isValid)
@@ -93,7 +95,7 @@ void PBFTManager::commit(SignedMessage msg) {
     if(poolHasMessage(commitPool, msg))
         return;
 
-    Logger::logStatus("Commit called!");
+    // Logger::logStatus("Commit called!");
 
     bool isValid = checkSignature((const char*)msg.hash.data(), msg.hash.size(), msg.signature, msg.publicKey);
     if(!isValid)
@@ -105,6 +107,8 @@ void PBFTManager::commit(SignedMessage msg) {
     if(messagePoolSize(commitPool, msg) >= MIN_APPROVALS) {
         Block block = blockPool.at(msg.hash);
         ExecutionStatus status = blockchain.addBlock(block);
+        Logger::logStatus("Block added (" + to_string(block.getId()) + ") " + to_string(1000*time(0)));
+
     }
 
     SignedMessage roundChangeMsg = createPBFTMessage(msg.hash, user.getPublicKey(), user.getPrivateKey(), ROUND_CHANGE);
@@ -114,7 +118,7 @@ void PBFTManager::commit(SignedMessage msg) {
 
 // do we need this step?
 void PBFTManager::roundChange(SignedMessage msg) {
-    Logger::logStatus("Round change called!");
+    // Logger::logStatus("Round change called!");
     // check validity of the round change message
     // add to message pool and broadcast
     // if message pool is bigger min approvals

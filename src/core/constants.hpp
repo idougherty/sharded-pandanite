@@ -28,3 +28,4 @@
 #define MIN_DIFFICULTY 6
 #define MAX_DIFFICULTY 255
 
+#define LATENCY 50

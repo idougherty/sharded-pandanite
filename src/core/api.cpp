@@ -1,6 +1,7 @@
 #include <chrono>
 #include <iostream>
 #include <sstream>
+#include <thread>
 #include "api.hpp"
 #include "../external/http.hpp"
 #include "constants.hpp"
@@ -180,6 +181,9 @@ void readRawTransactions(string host_url, vector<Transaction>& transactions) {
 }
 
 json sendBlockProposal(string host_url, Block& block) {
+    // // LATENCY
+    // std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY));
+    
     BlockHeader b = block.serialize();
     vector<uint8_t> bytes(BLOCKHEADER_BUFFER_SIZE + TRANSACTIONINFO_BUFFER_SIZE * b.numTransactions);
 
@@ -200,6 +204,8 @@ json sendBlockProposal(string host_url, Block& block) {
 }
 
 json sendPBFTMessage(string host_url, SignedMessage message) {
+    // // LATENCY
+    // std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY));
     
     // TODO: move buffer building out for broadcasts for efficiency
     vector<uint8_t> bytes(sizeof(SignedMessage));

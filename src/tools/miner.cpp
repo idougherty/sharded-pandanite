@@ -53,7 +53,7 @@ void get_work(PublicWalletAddress wallet, string pubkey, HostManager& hosts, str
             vector<Transaction> transactions;
             readRawTransactions(host, transactions);
 
-            if(transactions.size() != MAX_TRANSACTIONS_PER_BLOCK) {
+            if(transactions.size() != 0) {
                 std::this_thread::sleep_for(std::chrono::seconds(1));
                 continue;
             }
